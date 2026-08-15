@@ -1363,3 +1363,109 @@ body{
     grid-column:1!important;
   }
 }
+
+
+/* ============================================================
+   Q-CONTROL — PAYMENT KIND REAL FIX
+   extendPaymentKind .form-grid daxilində deyil, ayrıca
+   .payment-kind-wrap blokundadır. Buna görə əvvəlki selector
+   həmin sahəyə təsir etmirdi.
+   ============================================================ */
+
+#extendDialog .payment-kind-wrap{
+  padding:16px 22px 0!important;
+  margin:0!important;
+  width:100%;
+}
+
+#extendDialog .payment-kind-wrap .field{
+  display:grid!important;
+  gap:7px!important;
+  width:100%;
+  margin:0!important;
+}
+
+#extendDialog .payment-kind-wrap .field > span{
+  display:block;
+  margin:0!important;
+  padding:0!important;
+  font-size:10px!important;
+  line-height:1.25;
+  color:var(--muted);
+  font-weight:700;
+}
+
+#extendDialog #extendPaymentKind{
+  display:block;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  height:48px!important;
+  min-height:48px!important;
+  margin:0!important;
+  padding:0 42px 0 13px!important;
+  border:1px solid rgba(255,255,255,.09)!important;
+  border-radius:13px!important;
+  background-color:#0a0f15!important;
+  color:var(--text)!important;
+  font-size:13px!important;
+  line-height:48px!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.025),
+    0 7px 18px rgba(0,0,0,.10)!important;
+}
+
+#extendDialog #extendPaymentKind:focus{
+  outline:none!important;
+  border-color:rgba(124,92,255,.55)!important;
+  box-shadow:
+    0 0 0 3px rgba(124,92,255,.08),
+    inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+
+/* Ay seçimi görünəndə payment-kind ilə arası bərabər olsun */
+#extendDialog .payment-kind-wrap + .month-picks{
+  padding-top:14px!important;
+}
+
+/* Ay düymələri gizli olanda form payment select-dən dərhal sonra səliqəli başlasın */
+#extendDialog .payment-kind-wrap + .month-picks.hidden + #extendMonths + .form-grid,
+#extendDialog #extendMonthPicks.hidden ~ .form-grid{
+  padding-top:14px!important;
+}
+
+/* Məbləğ / tarix blokunu payment-kind ilə eyni sol-sağ xəttə sal */
+#extendDialog .form-grid{
+  padding-left:22px!important;
+  padding-right:22px!important;
+}
+
+/* Preview də eyni vizual xəttdə */
+#extendDialog .preview-box{
+  margin-left:22px!important;
+  margin-right:22px!important;
+}
+
+/* Mobil */
+@media(max-width:760px){
+  #extendDialog .payment-kind-wrap{
+    padding:15px 16px 0!important;
+  }
+
+  #extendDialog #extendPaymentKind{
+    height:46px!important;
+    min-height:46px!important;
+    line-height:46px!important;
+    font-size:12.5px!important;
+  }
+
+  #extendDialog .form-grid{
+    padding-left:16px!important;
+    padding-right:16px!important;
+  }
+
+  #extendDialog .preview-box{
+    margin-left:16px!important;
+    margin-right:16px!important;
+  }
+}
