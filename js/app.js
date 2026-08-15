@@ -76,7 +76,10 @@ function bindEvents() {
     btn.addEventListener("click", () => switchView(btn.dataset.view))
   );
   $("#addProjectBtn").addEventListener("click", () => openProjectDialog());
-  $("#mobileAddProjectBtn").addEventListener("click", () => openProjectDialog());
+  $("#mobileAddProjectBtn").addEventListener("click", () => {
+    if (!state.session || !state.me?.is_admin) return;
+    openProjectDialog();
+  });
   $("#dashboardSearch").addEventListener("input", renderProjectCards);
   $("#dashboardFilter").addEventListener("change", renderProjectCards);
   $("#projectsSearch").addEventListener("input", renderProjectsTable);
@@ -155,12 +158,19 @@ function showLogin() {
   $("#boot").classList.add("hidden");
   $("#appView").classList.add("hidden");
   $("#loginView").classList.remove("hidden");
+  $("#mobileBottomNav")?.classList.add("hidden");
+  $("#sidebar")?.classList.remove("open");
+  $("#drawerBackdrop")?.classList.add("hidden");
+
+  // Sessiya bağlananda açıq qalmış idarəetmə modallarını da bağla.
+  $$("dialog[open]").forEach(dialog => dialog.close());
 }
 
 function showApp() {
   $("#boot").classList.add("hidden");
   $("#loginView").classList.add("hidden");
   $("#appView").classList.remove("hidden");
+  $("#mobileBottomNav")?.classList.remove("hidden");
   $("#adminName").textContent = state.me?.display_name || "Admin";
   $("#adminEmail").textContent = state.me?.email || state.session?.user?.email || "—";
   $("#profileName").value = state.me?.display_name || "";
@@ -293,27 +303,49 @@ function renderProjectsTable() {
 }
 
 function renderPayments() {
-  $("#paymentsTableBody").innerHTML = state.payments.length ? state.payments.map(p => `
+  $("#paymentsTableBody").innerHTML = state.payments.length ? state.payments.map(p => {
+    const project = p.control_projects || {};
+    const fallback = esc((project.name || "Q").trim().charAt(0).toUpperCase());
+    return `
     <tr>
       <td>${formatDate(p.paid_at, true)}</td>
-      <td><div class="cell-main"><strong>${esc(p.control_projects?.name || "—")}</strong><span>${esc(p.control_projects?.domain || "")}</span></div></td>
+      <td>
+        <div class="table-project payment-project">
+          <div class="table-project-icon">${projectIconHtml(project, fallback)}</div>
+          <div class="cell-main">
+            <strong>${esc(project.name || "—")}</strong>
+            <span>${esc(project.domain || "")}</span>
+          </div>
+        </div>
+      </td>
       <td><strong>${money(p.amount)}</strong></td>
       <td>${p.months} ay</td>
       <td>${formatDate(p.period_from)} → ${formatDate(p.period_to)}</td>
       <td>${esc(p.note || "—")}</td>
-    </tr>`).join("") : `<tr><td colspan="6">Hələ ödəniş qeydi yoxdur.</td></tr>`;
+    </tr>`;
+  }).join("") : `<tr><td colspan="6">Hələ ödəniş qeydi yoxdur.</td></tr>`;
 }
 
 function renderLogs() {
-  $("#logsList").innerHTML = state.logs.length ? state.logs.map(log => `
+  $("#logsList").innerHTML = state.logs.length ? state.logs.map(log => {
+    const project = log.control_projects;
+    const fallback = project?.name
+      ? esc(project.name.trim().charAt(0).toUpperCase())
+      : logIcon(log.action);
+    const visual = project
+      ? projectIconHtml(project, fallback)
+      : `<span>${logIcon(log.action)}</span>`;
+
+    return `
     <article class="log-item">
-      <div class="log-icon">${logIcon(log.action)}</div>
+      <div class="log-icon ${project?.icon_url ? "has-project-icon" : ""}">${visual}</div>
       <div>
         <strong>${esc(logTitle(log))}</strong>
-        <p>${esc(log.details?.message || log.control_projects?.name || "")}</p>
+        <p>${esc(log.details?.message || project?.name || "")}</p>
       </div>
       <time>${formatDate(log.created_at, true)}</time>
-    </article>`).join("") : `<div class="empty">Fəaliyyət qeydi yoxdur.</div>`;
+    </article>`;
+  }).join("") : `<div class="empty">Fəaliyyət qeydi yoxdur.</div>`;
 }
 
 function logIcon(action) {
@@ -560,6 +592,7 @@ async function refreshSession() {
 async function handleDelegatedClick(event) {
   const btn = event.target.closest("[data-action]");
   if (!btn) return;
+  if (!state.session || !state.me?.is_admin) return;
   const project = getProject(btn.dataset.id);
   if (!project) return;
 

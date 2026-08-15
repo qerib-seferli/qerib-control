@@ -112,7 +112,7 @@ export async function listPayments() {
 
   while (true) {
     const { data, error } = await supabase.from("control_payments")
-      .select("*, control_projects(name,domain)")
+      .select("*, control_projects(id,name,domain,icon_url)")
       .order("paid_at", { ascending: false })
       .range(from, from + pageSize - 1);
 
@@ -132,7 +132,7 @@ export async function listPayments() {
 
 export async function listLogs(limit = 300) {
   const { data, error } = await supabase.from("control_activity_logs")
-    .select("*, control_projects(name)")
+    .select("*, control_projects(id,name,domain,icon_url)")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
