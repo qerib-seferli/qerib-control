@@ -9,6 +9,14 @@ export default {
     const url = new URL(request.url);
     const host = normalizeHost(url.hostname);
 
+    if (url.hostname.endsWith(".workers.dev")) {
+      return Response.json({
+        ok: true,
+        service: "q-control-gateway",
+        status: "ready"
+      });
+    }
+
     // Worker API/static yox, yalnız route qoşulan real domenlərdə işləyir.
     const status = await getStatus(host);
 
