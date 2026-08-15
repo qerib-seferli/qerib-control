@@ -1243,3 +1243,123 @@ body{
     height:100%;
   }
 }
+
+
+/* ============================================================
+   Q-CONTROL — PAYMENT MODAL LAYOUT FIX
+   "Ödəniş növü" sahəsi və seçilən select blokunun simmetrik düzülüşü.
+   Yalnız CSS — funksionallığa toxunmur.
+   ============================================================ */
+
+/* Ödəniş modalında select sahəsi modalın içində normal nəfəs alsın */
+#extendDialog .form-grid{
+  align-items:start;
+}
+
+/* Ödəniş növü sahəsi varsa tam en və düzgün aralıq */
+#extendDialog .form-grid > .field.span-2:first-child,
+#extendDialog .form-grid > .field:first-child:has(select){
+  grid-column:1 / -1!important;
+  width:100%;
+  margin:0 0 2px;
+}
+
+/* Label ilə select arasında düzgün məsafə */
+#extendDialog .field > span{
+  margin-bottom:2px;
+}
+
+/* Uzun görünən select-i vizual olaraq toparla */
+#extendDialog select{
+  width:100%;
+  min-height:48px;
+  padding:0 44px 0 13px;
+  border-radius:13px;
+  border:1px solid rgba(255,255,255,.09);
+  background-color:#0a0f15;
+  color:var(--text);
+  font-size:13px;
+  line-height:1.2;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.025),
+    0 7px 18px rgba(0,0,0,.10);
+}
+
+/* Select fokusda premium görünüş */
+#extendDialog select:focus{
+  border-color:rgba(124,92,255,.55);
+  box-shadow:
+    0 0 0 3px rgba(124,92,255,.08),
+    inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+/* Ödəniş modalının ümumi daxili boşluqlarını simmetrik saxla */
+#extendDialog .modal-head{
+  padding-bottom:17px;
+}
+
+#extendDialog .form-grid{
+  padding-top:17px;
+  gap:13px 16px;
+}
+
+/* Məbləğ və tarix eyni hündürlükdə olsun */
+#extendDialog .field input,
+#extendDialog .field select{
+  min-height:48px;
+}
+
+/* Qeyd sahəsi tam en və səliqəli */
+#extendDialog .field.span-2{
+  width:100%;
+}
+
+/* Preview blokunun eni select/form ilə eyni xəttə düşsün */
+#extendDialog .preview-box{
+  width:auto;
+  margin-left:22px;
+  margin-right:22px;
+}
+
+/* Desktopda modal çox geniş görünməsin */
+@media(min-width:761px){
+  #extendDialog.small-modal{
+    width:min(620px,calc(100% - 32px))!important;
+  }
+}
+
+/* Telefonda ödəniş növü, qeyd və preview tam en;
+   məbləğ + tarix isə 2 sütun qalır */
+@media(max-width:760px){
+  #extendDialog .form-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:12px 10px!important;
+    padding:16px 16px!important;
+  }
+
+  #extendDialog .form-grid > .field.span-2,
+  #extendDialog .form-grid > .field:first-child:has(select){
+    grid-column:1 / -1!important;
+  }
+
+  #extendDialog .field input,
+  #extendDialog .field select{
+    min-width:0;
+    width:100%;
+  }
+
+  #extendDialog .preview-box{
+    margin:0 16px 16px!important;
+  }
+}
+
+/* Çox dar telefonlarda tarix sahəsi sıxılmasın */
+@media(max-width:430px){
+  #extendDialog .form-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  #extendDialog .form-grid > .field{
+    grid-column:1!important;
+  }
+}
