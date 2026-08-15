@@ -1,72 +1,231 @@
-# Q-Control 2.0
+# Q-Control — Final İdarəetmə Sistemi
 
-Q-Control mənə məxsus layihə/xidmət nəzarət panelidir. Panel GitHub Pages + PWA kimi işləyir, məlumatları Supabase-də saxlayır. Real domeni Cloudflare-də olan layihələr **universal Cloudflare Worker** vasitəsilə idarə olunur. Belə layihələrin HTML və JS fayllarına Q-Control kodu əlavə etmək lazım deyil.
+Q-Control mənim aylıq xidmət göstərdiyim sayt və sistemləri bir paneldən idarə etməyim üçün hazırlanmış şəxsi nəzarət sistemidir.
 
-## Sistem necə işləyir?
+Panel:
+- GitHub Pages-də işləyir;
+- PWA kimi telefona quraşdırılır;
+- Supabase Auth + Database + RLS + Storage istifadə edir;
+- domenli layihələri bir universal Cloudflare Worker ilə idarə edir;
+- layihələrin ödəniş tarixini, statusunu, ikonunu, audit tarixçəsini və qazancı saxlayır.
+
+---
+
+## 1. Arxitektura
 
 ```text
-İstifadəçi → layihə domeni → Cloudflare Worker → Q-Control statusu
-                                                ├─ ACTIVE → normal sayt
-                                                └─ SUSPENDED → xüsusi xidmət ekranı
+Mən → Q-Control PWA
+          ↓
+       Supabase
+          ↓
+  active / suspended
+          ↓
+Cloudflare q-control-gateway
+          ↓
+Müştərinin domeni
 ```
 
-Q-Control əlçatmaz olarsa Worker `fail-open` işləyir: layihə təsadüfən bağlanmır.
+Layihə `active` olduqda Worker sorğunu normal origin-ə ötürür.
 
-## İlk dəfə Q-Control 2.0-a keçid
+Layihə `suspended` olduqda GitHub 404 göstərilmir. Q-Control-un premium **“Xidmət müvəqqəti dayandırılıb”** ekranı göstərilir.
 
-1. Supabase SQL Editor-də `sql/04_upgrade_v2_cloudflare_icons.sql` faylını bir dəfə Run et.
-2. GitHub-a bu upgrade ZIP-indəki dəyişən/yeni faylları eyni qovluqlara deploy et.
-3. PWA köhnə versiyanı göstərərsə tətbiqi bağlayıb yenidən aç və ya browser-də bir dəfə hard refresh et.
-4. Cloudflare-də `cloudflare/q-control-worker.js` kodu ilə bir Worker yarat: `q-control-gateway`.
-5. Hər real domen üçün həmin Worker-a Route əlavə et.
+Q-Control/Supabase qısa müddət əlçatmaz olsa Worker `fail-open` işləyir və müştəri saytı səbəbsiz bağlanmır.
 
-## Real domenli yeni layihəni qoşmaq — ən asan üsul
+---
 
-Məsələn `meyveci.az`.
+## 2. Q-Control-un əsas funksiyaları
 
-1. Q-Control → `+ Layihə`.
-2. Layihə adı, domen, aylıq məbləğ və bitmə tarixini yaz.
-3. İstəsən layihə ikonunu seç. İkon 256×256 WebP olur.
-4. Yadda saxla.
-5. Cloudflare → Workers & Pages → `q-control-gateway`.
-6. `Settings → Domains & Routes → Add → Route`.
-7. Route olaraq:
-   - `meyveci.az/*`
-   - lazım olsa ayrıca `www.meyveci.az/*`
-8. Bitdi. Layihənin HTML/JS fayllarına heç nə əlavə etmə.
+Dashboard:
+- aktiv layihə sayı;
+- dayandırılmış layihə sayı;
+- 7 gün ərzində vaxtı çatan layihələr;
+- aktiv layihələrin aylıq portfeli;
+- cari ayda daxil olmuş ödənişlər;
+- bütün ödəniş tarixçəsi üzrə ümumi qazanc.
 
-### Test
+`Ümumi qazanc` Q-Control-da qeyd etdiyim **brüt daxilolmadır**. Xərc çıxılmır.
 
-1. Q-Control-da layihəni `Aktiv` et → sayt normal açılmalıdır.
-2. `Dayandır` vur → yeni/incognito pəncərədə domeni aç → Q-Control-un xüsusi xidmət səhifəsi görünməlidir.
-3. `Ödəniş` → 1/3/6/12 ay seç → `Ödənişi qeyd et və aktivləşdir`.
-4. Saytı yenilə → normal sayt geri açılmalıdır.
+Layihələr:
+- ad;
+- ikon;
+- slug;
+- domen;
+- aylıq qiymət;
+- bitmə tarixi;
+- active / suspended / cancelled;
+- avtomatik dayandırma;
+- maintenance başlığı və mətni;
+- daxili qeyd.
 
-**GitHub Pages-i Unpublish etmə.** Cloudflare Worker istifadə olunanda sayt həmişə publish qalır.
+Ödənişlər:
+- 1 / 3 / 6 / 12 ay;
+- faktiki məbləğ;
+- ödəniş tarixi;
+- period başlanğıcı və sonu;
+- qeyd;
+- ümumi qazanc və cari ay qazancı.
 
-## Layihə ikonları
+Tarixçə:
+- layihə yaradılması;
+- redaktə;
+- status dəyişməsi;
+- ödəniş;
+- arxiv;
+- public-key dəyişməsi;
+- profil dəyişiklikləri.
 
-- Bucket: `project-icons`
-- Fayl yolu həmişə: `<project-id>/icon.webp`
-- Yeni ikon seçiləndə köhnə obyekt Storage API ilə silinir və eyni path-ə yeni WebP yazılır.
-- Beləliklə hər dəyişiklikdə yeni fayllar yığılıb Storage-i doldurmur.
-- DB-də yalnız son `icon_url` saxlanılır.
+---
 
-## Domeni olmayan layihə necə qoşulur?
+## 3. Vaxt və tarix qaydası
 
-Cloudflare Route yalnız sənə məxsus/Cloudflare-də idarə olunan domen üçün işləyir. Məsələn yalnız:
+Q-Control biznes vaxtını **Asia/Baku / Azərbaycan vaxtı** kimi göstərir.
 
-`https://qerib-seferli.github.io/project/`
+Frontend `datetime-local` tarixlərini `+04:00` Azərbaycan vaxtı kimi Supabase-ə göndərir. Buna görə kompüter və ya telefon başqa timezone-a keçsə belə paneldə layihənin ödəniş saatı Azərbaycan vaxtına görə göstərilir.
 
-ünvanı olan layihəyə `github.io` səviyyəsində Worker Route qoya bilmərəm, çünki `github.io` domeni mənə məxsus deyil.
+Misal:
 
-Belə layihələr üçün 3 variant var:
+```text
+Bitmə: 15.08.2026 12:00
++ 1 ay → 15.09.2026 12:00
++ 3 ay → 15.11.2026 12:00
+```
 
-### Variant A — ən yaxşısı
-Layihəyə öz domain/subdomain qoş və Cloudflare Worker istifadə et. Sonra layihə koduna toxunmaq lazım deyil.
+Ayın 29/30/31-i kimi tarixlərdə növbəti ayda həmin gün yoxdursa son mümkün gün seçilir.
 
-### Variant B — ortaq JS olan layihə
-Layihənin bütün səhifələrinin istifadə etdiyi bir `core.js`, `app.js`, `layout.js` və s. varsa, həmin ortaq girişdən `client/q-control-guard.js` çağır. Public key Q-Control → Ətraflı bölməsindədir.
+Auto suspend aktivdirsə `paid_until` vaxtı çatanda public status RPC layihəni dərhal dayandırılmış hesab edir.
+
+---
+
+## 4. Yeni DOMENLİ layihəni qoşmaq
+
+Bu ən yaxşı və ən asan üsuldur.
+
+### Q-Control
+
+1. `+ Layihə` bas.
+2. Layihə adını yaz.
+3. İkon seç.
+4. Domeni yalnız host kimi yaz:
+   ```text
+   example.az
+   ```
+5. Aylıq məbləği yaz.
+6. Ödəniş bitmə tarixini yaz.
+7. `Avtomatik dayandır` açıq qalsın.
+8. `Yadda saxla`.
+
+### Cloudflare
+
+Bir dəfə yaratdığım Worker:
+
+```text
+q-control-gateway
+```
+
+Yeni layihə üçün **yeni Worker yaratmıram**.
+
+Cloudflare:
+
+```text
+Workers & Pages
+→ q-control-gateway
+→ Domains
+→ Add Route
+→ layihənin zone-u
+```
+
+Əsas domen üçün:
+
+```text
+example.az/*
+```
+
+`www` işləyirsə ayrıca:
+
+```text
+www.example.az/*
+```
+
+əlavə edirəm.
+
+**Add Domain / Custom Domain istifadə etmirəm. Route istifadə edirəm.**
+
+Layihənin HTML və JS fayllarına Q-Control kodu əlavə etmək lazım deyil.
+
+GitHub Pages-i də `Unpublish` etmirəm. Origin daim publish qalır.
+
+---
+
+## 5. Domenli layihənin real testi
+
+Qoşduqdan sonra həmişə bu testi et:
+
+### Aktiv test
+
+Q-Control:
+
+```text
+Layihə → Aktiv et
+```
+
+Incognito/private pəncərədə domeni aç.
+
+Normal sayt gəlməlidir.
+
+### Dayandırma testi
+
+Q-Control:
+
+```text
+Layihə → Dayandır
+```
+
+Domeni yenilə.
+
+Q-Control maintenance ekranı gəlməlidir.
+
+### Ödəniş testi
+
+Q-Control:
+
+```text
+Layihə → Ödəniş
+→ 1 / 3 / 6 / 12 ay
+→ məbləğ
+→ Ödənişi qeyd et və aktivləşdir
+```
+
+Normal sayt yenidən açılmalıdır.
+
+---
+
+## 6. Domeni OLMAYAN layihə necə qoşulur?
+
+Məsələn yalnız belə ünvan varsa:
+
+```text
+https://qerib-seferli.github.io/project/
+```
+
+`github.io` mənim domenim olmadığı üçün Cloudflare route ilə onun bütün trafikini tuta bilmərəm.
+
+Üç seçim var.
+
+### A — tövsiyə edilən
+
+Layihəyə öz domen/subdomain qoş.
+
+Sonra onu Cloudflare-ə əlavə et və normal Worker Route istifadə et.
+
+Bu ən güclü və ən az kod tələb edən üsuldur.
+
+### B — ortaq giriş JS-i varsa
+
+Layihədə bütün səhifələrin istifadə etdiyi `core.js`, `app.js`, `layout.js` kimi ortaq giriş nöqtəsi varsa Q-Control frontend guard həmin bir girişdən çağırıla bilər.
+
+Q-Control → Layihə → Ətraflı bölməsində public key var.
+
+Nümunə:
 
 ```html
 <script>
@@ -78,44 +237,241 @@ window.Q_CONTROL = {
 <script src="https://qerib-seferli.github.io/qerib-control/client/q-control-guard.js"></script>
 ```
 
-Bu frontend üsuludur və source kodunu idarə edən proqramçı guard-u silə bilər.
+Bu Cloudflare qədər sərt deyil. Source kodunu idarə edən proqramçı guard-u silə bilər.
 
-### Variant C — heç domain, heç ortaq giriş yoxdursa
-GitHub Pages `Unpublish / Run workflow` manual ehtiyat üsulundan istifadə et. Bir faylla bütün `github.io` trafikinə xaricdən nəzarət etmək mümkün deyil, çünki domen sənə məxsus deyil.
+### C — nə domen, nə də ortaq giriş yoxdursa
 
-## İkon seçimi qaydası
+Ehtiyat üsul:
 
-Layihə yaradarkən və ya Redaktə edərkən ikon sahəsinə toxun:
-- PNG / JPG / WebP
-- maksimum giriş faylı 8 MB
-- Q-Control browser-də 256×256 WebP-ə çevirir
-- Storage-də yalnız son ikon qalır
+```text
+GitHub → Settings → Pages → Unpublish site
+```
 
-## Ödəniş axını
+Açmaq:
 
-`Ödəniş → 1 / 3 / 6 / 12 ay → məbləğ → Ödənişi qeyd et və aktivləşdir`
+```text
+Actions → Pages workflow → Run workflow
+```
 
-Sistem:
-- ödəniş tarixçəsi yaradır;
-- bitmə tarixini uzadır;
-- statusu `active` edir;
-- audit jurnalına yazır.
+Bu halda xüsusi maintenance səhifəsi yox, GitHub 404 görünə bilər.
 
-Tarix çatanda auto-suspend aktivdirsə Q-Control status yoxlaması layihəni dayandırılmış hesab edir.
+---
 
-## Təhlükəsizlik
+## 7. Layihə ikonları
 
-- Admin panel RLS + Supabase Auth ilə qorunur.
-- `service_role` / secret key heç vaxt frontend və Worker koduna yazılmamalıdır.
-- Worker-dəki anon key yalnız məhdud public status RPC-ni çağırır.
-- Public RPC cədvəlləri açmır; yalnız domenin `active/suspended` cavabını və maintenance mətnini verir.
+Supabase bucket:
 
-## Q-Control-da browser/GitHub tipli popup
+```text
+project-icons
+```
 
-Q-Control 2.0 standart `window.confirm()` istifadə etmir. Aktivləşdirmə, dayandırma, arxiv və public-key yeniləmə üçün panelin öz modalı göstərilir. Ona görə popup-da `github.io says...` görünməməlidir.
+Hər layihə üçün yalnız:
 
-## Cloudflare universal Worker
+```text
+<project-id>/icon.webp
+```
 
-Kod: `cloudflare/q-control-worker.js`
+saxlanılır.
 
-Bir Worker bütün domenlər üçün kifayətdir. Yeni layihə üçün yeni Worker yaratma; yalnız mövcud `q-control-gateway` Worker-a yeni Route əlavə et.
+Q-Control:
+- PNG/JPG/WebP qəbul edir;
+- browser-də 256×256 WebP edir;
+- yeni ikon yüklənəndə köhnə `icon.webp` silinir;
+- sonra eyni path-ə yeni ikon yazılır;
+- DB-də yalnız son `icon_url` qalır.
+
+Beləliklə ikon dəyişdikcə Storage lazımsız fayllarla dolmur.
+
+---
+
+## 8. Ödəniş və qazanc qaydası
+
+Məsələn aylıq qiymət:
+
+```text
+94.12 ₼
+```
+
+1 ay seçəndə ilkin məbləğ:
+
+```text
+94.12 ₼
+```
+
+3 ay:
+
+```text
+282.36 ₼
+```
+
+6 ay:
+
+```text
+564.72 ₼
+```
+
+12 ay:
+
+```text
+1129.44 ₼
+```
+
+Məbləği lazım olsa ödəniş pəncərəsində əl ilə dəyişmək mümkündür.
+
+Ödəniş qeydə alınanda:
+1. `control_payments` tarixçəsinə əlavə olunur;
+2. layihənin `paid_until` tarixi uzadılır;
+3. layihə `active` edilir;
+4. audit jurnalı yazılır;
+5. Dashboard qazancı yenilənir.
+
+`Aylıq portfel` başqa anlayışdır: hazırda aktiv layihələrin aylıq müqavilə məbləğlərinin cəmidir.
+
+`Bu ay qazanc`: Azərbaycan vaxtına görə cari təqvim ayında faktiki qeyd edilmiş ödənişlərin cəmidir.
+
+`Ümumi qazanc`: `control_payments` tarixçəsində olan bütün faktiki ödənişlərin cəmidir.
+
+Test üçün yazılmış ödəniş də database-də qaldığı müddətdə qazanca daxil olacaq. Test qeydi istənmirsə production istifadəsindən əvvəl həmin test payment ayrıca silinməli/düzəldilməlidir.
+
+---
+
+## 9. Cloudflare Worker
+
+Worker adı:
+
+```text
+q-control-gateway
+```
+
+Mənbə kod:
+
+```text
+cloudflare/q-control-worker.js
+```
+
+`workers.dev` URL health-check üçündür və belə cavab verir:
+
+```json
+{
+  "ok": true,
+  "service": "q-control-gateway",
+  "status": "ready"
+}
+```
+
+Bir Worker bütün domenli layihələr üçün istifadə olunur.
+
+Yeni layihədə yalnız yeni Route əlavə olunur.
+
+Worker production-da dəyişdirilərsə:
+
+```text
+Workers & Pages
+→ q-control-gateway
+→ Edit code
+→ Deploy
+```
+
+---
+
+## 10. PWA
+
+Q-Control telefon browserindən açılır və PWA kimi quraşdırılır.
+
+Telefon UI:
+- dashboard statistikaları 2 sütun;
+- böyük layihə kartları 1 sütun;
+- settings blokları 1 sütun;
+- aşağıda sabit mobil naviqasiya;
+- `+` düyməsi ilə sürətli layihə əlavə etmə;
+- safe-area dəstəyi;
+- standalone tətbiq görünüşü.
+
+PWA köhnə versiyanı göstərirsə:
+1. tətbiqi tam bağla;
+2. yenidən aç;
+3. lazım olsa browser-də Q-Control səhifəsini hard refresh et.
+
+Service Worker cache versiyası dəyişdirildikdə köhnə shell avtomatik təmizlənir.
+
+---
+
+## 11. Müştəri layihəsinin öz PWA-sı varsa
+
+Cloudflare request-ləri server tərəfdə idarə edir, amma müştəri layihəsinin öz Service Worker-i navigation səhifəsini tam cache-dən verirsə köhnə açıq ekran görünə bilər.
+
+Buna görə Q-Control-a bağlanan PWA layihələrdə navigation üçün:
+- network-first;
+- və ya offline navigation cache-in söndürülməsi
+
+tövsiyə olunur.
+
+Real test həmişə həm browser, həm də quraşdırılmış PWA-da edilməlidir.
+
+---
+
+## 12. Təhlükəsizlik
+
+- Q-Control login Supabase Auth-dır.
+- əsas cədvəllər RLS ilə qorunur;
+- admin olmayan hesab panel məlumatına girə bilmir;
+- `service_role` və Supabase secret key frontend/Worker koduna yazılmır;
+- Worker yalnız məhdud public status RPC çağırır;
+- idarə olunmayan domen tapılmazsa Worker `fail-open` edir;
+- Q-Control API cavab verməsə müştəri saytı səbəbsiz dayandırılmır.
+
+Anon/publishable key brauzer və public RPC üçün istifadə olunur. Səlahiyyət təhlükəsizliyi RLS/RPC tərəfində qalır.
+
+---
+
+## 13. Backup / dəyişiklik etməzdən əvvəl
+
+Əsas Q-Control dəyişikliklərindən əvvəl:
+1. GitHub-da işlək commit saxla;
+2. Supabase SQL-i destructive etmə;
+3. `control_projects`, `control_payments`, `control_activity_logs` məlumatlarını silmə;
+4. Cloudflare route-u dəyişdirəndə əvvəl bir layihədə test et.
+
+Müştəri layihəsinin Supabase URL/key-i ilə Q-Control üçün oynama.
+
+---
+
+## 14. Yeni layihə üçün 60 saniyəlik checklist
+
+```text
+[ ] Q-Control → + Layihə
+[ ] Ad
+[ ] İkon
+[ ] Domain
+[ ] Aylıq qiymət
+[ ] Bitmə tarixi
+[ ] Auto suspend = ON
+[ ] Yadda saxla
+[ ] Cloudflare → q-control-gateway → Domains
+[ ] example.az/*
+[ ] www.example.az/* (işləyirsə)
+[ ] Aktiv test
+[ ] Dayandır test
+[ ] Ödəniş/aktiv test
+```
+
+Bitdi.
+
+---
+
+## 15. Mövcud real nümunə — Meyvəçi
+
+```text
+Layihə: Meyvəçi
+Domain: meyveci.az
+Worker: q-control-gateway
+Routes:
+  meyveci.az/*
+  www.meyveci.az/*
+```
+
+Q-Control-dan `Dayandır` veriləndə xüsusi maintenance səhifəsi göstərilir.
+
+`Aktiv et` və ya `Ödənişi qeyd et və aktivləşdir` verildikdə normal Meyvəçi saytı açılır.
+
+Bu, yeni layihələri qoşarkən işlək referans nümunədir.

@@ -3,7 +3,7 @@ import { supabase } from "./supabase.js";
 import * as api from "./api.js";
 import {
   $, $$, esc, money, formatDate, toDatetimeLocal, localToIso, nowLocalInput,
-  daysUntil, effectiveStatus, statusLabel, slugify, addMonthsKeepingAnchor,
+  daysUntil, isCurrentBakuMonth, effectiveStatus, statusLabel, slugify, addMonthsKeepingAnchor,
   toast, copyText, safeDomain
 } from "./core.js";
 
@@ -72,8 +72,11 @@ function bindEvents() {
     input.type = input.type === "password" ? "text" : "password";
   });
 
-  $$(".nav-item").forEach(btn => btn.addEventListener("click", () => switchView(btn.dataset.view)));
+  $$(".nav-item, .mobile-nav-item[data-view]").forEach(btn =>
+    btn.addEventListener("click", () => switchView(btn.dataset.view))
+  );
   $("#addProjectBtn").addEventListener("click", () => openProjectDialog());
+  $("#mobileAddProjectBtn").addEventListener("click", () => openProjectDialog());
   $("#dashboardSearch").addEventListener("input", renderProjectCards);
   $("#dashboardFilter").addEventListener("change", renderProjectCards);
   $("#projectsSearch").addEventListener("input", renderProjectsTable);
@@ -198,11 +201,23 @@ function renderStats() {
     const d = daysUntil(p.paid_until);
     return d !== null && d >= 0 && d <= CONFIG.DUE_SOON_DAYS;
   });
+
   const mrr = active.reduce((sum, p) => sum + Number(p.monthly_price || 0), 0);
+  const totalIncome = state.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const monthIncome = state.payments
+    .filter(p => isCurrentBakuMonth(p.paid_at))
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
   $("#statActive").textContent = active.length;
   $("#statSuspended").textContent = suspended.length;
   $("#statDueSoon").textContent = dueSoon.length;
   $("#statMRR").textContent = money(mrr);
+  $("#statMonthIncome").textContent = money(monthIncome);
+  $("#statTotalIncome").textContent = money(totalIncome);
+
+  $("#paymentsMonthIncome").textContent = money(monthIncome);
+  $("#paymentsTotalIncome").textContent = money(totalIncome);
+  $("#paymentsCount").textContent = new Intl.NumberFormat("az-AZ").format(state.payments.length);
 }
 
 function renderProjectCards() {
@@ -324,7 +339,9 @@ function logTitle(log) {
 
 function switchView(view) {
   state.view = view;
-  $$(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.view === view));
+  $$(".nav-item, .mobile-nav-item[data-view]").forEach(x =>
+    x.classList.toggle("active", x.dataset.view === view)
+  );
   $$(".view").forEach(x => x.classList.toggle("active", x.id === `${view}View`));
   $("#viewTitle").textContent = viewMeta[view]?.[0] || "Q-Control";
   $("#viewSubtitle").textContent = viewMeta[view]?.[1] || "";

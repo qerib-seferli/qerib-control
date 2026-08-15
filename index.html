@@ -122,6 +122,16 @@
               <strong id="statMRR">0 ₼</strong>
               <small>aktiv layihələr üzrə</small>
             </article>
+            <article class="stat-card finance-stat">
+              <span>Bu ay qazanc</span>
+              <strong id="statMonthIncome">0 ₼</strong>
+              <small>qeyd edilmiş ödənişlər</small>
+            </article>
+            <article class="stat-card finance-stat total-income">
+              <span>Ümumi qazanc</span>
+              <strong id="statTotalIncome">0 ₼</strong>
+              <small>bütün ödəniş tarixçəsi</small>
+            </article>
           </div>
 
           <div class="section-head">
@@ -173,6 +183,20 @@
               <h3>Ödəniş tarixçəsi</h3>
               <p>Qeyd edilmiş bütün ödənişlər</p>
             </div>
+          </div>
+          <div class="payment-summary">
+            <article>
+              <span>Bu ay</span>
+              <strong id="paymentsMonthIncome">0 ₼</strong>
+            </article>
+            <article>
+              <span>Ümumi</span>
+              <strong id="paymentsTotalIncome">0 ₼</strong>
+            </article>
+            <article>
+              <span>Ödəniş sayı</span>
+              <strong id="paymentsCount">0</strong>
+            </article>
           </div>
           <div class="table-wrap">
             <table>
@@ -384,6 +408,24 @@
       <button id="confirmOkBtn" type="button" class="btn btn-primary">Təsdiqlə</button>
     </div>
   </dialog>
+
+  <nav class="mobile-bottom-nav" aria-label="Mobil naviqasiya">
+    <button class="mobile-nav-item active" data-view="dashboard" aria-label="Dashboard">
+      <span>◫</span><b>Ana səhifə</b>
+    </button>
+    <button class="mobile-nav-item" data-view="projects" aria-label="Layihələr">
+      <span>◇</span><b>Layihələr</b>
+    </button>
+    <button class="mobile-nav-item mobile-nav-add" id="mobileAddProjectBtn" type="button" aria-label="Yeni layihə">
+      <span>+</span><b>Yeni</b>
+    </button>
+    <button class="mobile-nav-item" data-view="payments" aria-label="Ödənişlər">
+      <span>₼</span><b>Ödəniş</b>
+    </button>
+    <button class="mobile-nav-item" data-view="settings" aria-label="Parametrlər">
+      <span>⚙</span><b>Ayarlar</b>
+    </button>
+  </nav>
 
   <div id="toastHost" class="toast-host" aria-live="polite"></div>
 

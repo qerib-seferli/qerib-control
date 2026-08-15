@@ -10,9 +10,30 @@ export function esc(value = "") {
     .replaceAll("'", "&#039;");
 }
 
+export const APP_TIME_ZONE = "Asia/Baku";
+
 export function money(value) {
   const n = Number(value || 0);
-  return `${new Intl.NumberFormat("az-AZ", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }).format(n)} ₼`;
+  return `${new Intl.NumberFormat("az-AZ", {
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2
+  }).format(n)} ₼`;
+}
+
+function bakuParts(value = new Date()) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIME_ZONE,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(d);
+  const obj = {};
+  for (const part of parts) {
+    if (part.type !== "literal") obj[part.type] = part.value;
+  }
+  return obj;
 }
 
 export function formatDate(value, withTime = false) {
@@ -20,33 +41,44 @@ export function formatDate(value, withTime = false) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("az-AZ", withTime
-    ? { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }
-    : { day:"2-digit", month:"2-digit", year:"numeric" }
+    ? {
+        timeZone: APP_TIME_ZONE,
+        day:"2-digit", month:"2-digit", year:"numeric",
+        hour:"2-digit", minute:"2-digit", hourCycle:"h23"
+      }
+    : { timeZone: APP_TIME_ZONE, day:"2-digit", month:"2-digit", year:"numeric" }
   ).format(d);
 }
 
 export function toDatetimeLocal(value) {
   if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = n => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const p = bakuParts(value);
+  if (!p) return "";
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
 export function localToIso(value) {
   if (!value) return null;
-  const d = new Date(value);
+  // Q-Control biznes saatı Azərbaycan vaxtıdır (+04:00, DST yoxdur).
+  const normalized = String(value).length === 16 ? `${value}:00+04:00` : `${value}+04:00`;
+  const d = new Date(normalized);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 export function nowLocalInput() {
-  return toDatetimeLocal(new Date().toISOString());
+  return toDatetimeLocal(new Date());
 }
 
 export function daysUntil(value) {
   if (!value) return null;
   const diff = new Date(value).getTime() - Date.now();
   return Math.ceil(diff / 86400000);
+}
+
+export function isCurrentBakuMonth(value) {
+  const item = bakuParts(value);
+  const now = bakuParts(new Date());
+  return Boolean(item && now && item.year === now.year && item.month === now.month);
 }
 
 export function effectiveStatus(project) {
@@ -68,15 +100,28 @@ export function slugify(value = "") {
 }
 
 export function addMonthsKeepingAnchor(dateValue, months) {
-  const base = dateValue ? new Date(dateValue) : new Date();
-  if (Number.isNaN(base.getTime())) return null;
-  const targetDay = base.getDate();
-  const result = new Date(base);
-  result.setDate(1);
-  result.setMonth(result.getMonth() + Number(months));
-  const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
-  result.setDate(Math.min(targetDay, lastDay));
-  return result;
+  const p = bakuParts(dateValue || new Date());
+  if (!p) return null;
+
+  const year = Number(p.year);
+  const monthIndex = Number(p.month) - 1;
+  const day = Number(p.day);
+  const hour = Number(p.hour);
+  const minute = Number(p.minute);
+  const second = Number(p.second || 0);
+
+  const target = new Date(Date.UTC(year, monthIndex + Number(months), 1, hour - 4, minute, second));
+  const targetBaku = bakuParts(target);
+  if (!targetBaku) return null;
+
+  const targetYear = Number(targetBaku.year);
+  const targetMonth = Number(targetBaku.month);
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate();
+  const safeDay = Math.min(day, lastDay);
+
+  const iso = `${targetYear}-${String(targetMonth).padStart(2,"0")}-${String(safeDay).padStart(2,"0")}T${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}:${String(second).padStart(2,"0")}+04:00`;
+  const result = new Date(iso);
+  return Number.isNaN(result.getTime()) ? null : result;
 }
 
 export function toast(message, type = "success", timeout = 3200) {
@@ -107,6 +152,3 @@ export function safeDomain(value = "") {
   return value.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
 }
 
-export function confirmAction(message) {
-  return window.confirm(message);
-}

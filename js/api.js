@@ -105,13 +105,29 @@ export async function regeneratePublicKey(projectId) {
   return data;
 }
 
-export async function listPayments(limit = 300) {
-  const { data, error } = await supabase.from("control_payments")
-    .select("*, control_projects(name,domain)")
-    .order("paid_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data || [];
+export async function listPayments() {
+  const pageSize = 1000;
+  let from = 0;
+  const all = [];
+
+  while (true) {
+    const { data, error } = await supabase.from("control_payments")
+      .select("*, control_projects(name,domain)")
+      .order("paid_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+    const rows = data || [];
+    all.push(...rows);
+
+    if (rows.length < pageSize) break;
+    from += pageSize;
+
+    // Səhv konfiqurasiya halında sonsuz sorğunu blokla.
+    if (from >= 50000) break;
+  }
+
+  return all;
 }
 
 export async function listLogs(limit = 300) {

@@ -307,3 +307,214 @@ body{letter-spacing:-.005em}
   .topbar-actions #addProjectBtn{font-size:0;width:38px;padding:0}
   .topbar-actions #addProjectBtn:after{content:"+";font-size:19px}
 }
+
+
+/* ============================================================
+   Q-Control FINAL — desktop + phone application UX
+   ============================================================ */
+:root{
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{-webkit-tap-highlight-color:transparent}
+button,.nav-item,.mobile-nav-item{touch-action:manipulation}
+.content{padding-bottom:34px}
+
+.stats-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  align-items:stretch;
+}
+.finance-stat{
+  background:
+    radial-gradient(circle at 100% 0,rgba(124,92,255,.10),transparent 45%),
+    linear-gradient(160deg,rgba(20,25,34,.92),rgba(12,16,23,.92));
+}
+.total-income{
+  border-color:rgba(124,92,255,.22);
+}
+.total-income strong{color:#ddd7ff}
+
+.payment-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin:0 0 14px;
+}
+.payment-summary article{
+  border:1px solid var(--line);
+  background:rgba(13,17,23,.72);
+  border-radius:14px;
+  padding:14px 16px;
+}
+.payment-summary span{
+  display:block;
+  color:var(--muted);
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.payment-summary strong{
+  display:block;
+  margin-top:7px;
+  font-size:17px;
+}
+
+.mobile-bottom-nav{display:none}
+
+@media(min-width:1450px){
+  .stats-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+
+@media(max-width:1100px) and (min-width:761px){
+  .stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+@media(max-width:760px){
+  .app-shell{min-height:100dvh}
+  .main-area{min-height:100dvh}
+  .content{
+    padding:14px 12px calc(92px + var(--safe-bottom));
+  }
+
+  /* Telefon dashboard statistikaları həmişə 2 sütun */
+  .stats-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:9px!important;
+    margin-bottom:20px;
+  }
+  .stat-card{
+    min-width:0;
+    padding:14px 13px!important;
+    border-radius:15px;
+  }
+  .stat-card span{
+    font-size:9px;
+    letter-spacing:.055em;
+    line-height:1.35;
+  }
+  .stat-card strong{
+    font-size:clamp(20px,6.5vw,27px)!important;
+    line-height:1.05;
+    margin:8px 0 5px;
+    overflow-wrap:anywhere;
+  }
+  .stat-card small{
+    display:block;
+    font-size:8.5px;
+    line-height:1.35;
+  }
+
+  /* Böyük məzmun blokları telefonda bir sütun */
+  .project-grid,
+  .settings-grid{
+    grid-template-columns:1fr!important;
+  }
+  .project-card{
+    width:100%;
+    min-height:auto!important;
+  }
+  .section-head{margin-top:14px}
+  .section-head h3{font-size:14px}
+
+  .payment-summary{
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .payment-summary article{padding:12px}
+  .payment-summary article:last-child{grid-column:1/-1}
+  .payment-summary strong{font-size:15px}
+
+  .topbar{
+    min-height:68px;
+    padding:10px 12px;
+    padding-top:max(10px,env(safe-area-inset-top));
+  }
+  .topbar-actions #addProjectBtn{display:none}
+  #menuBtn{display:grid}
+  .topbar h2{font-size:16px}
+  .topbar-actions{gap:5px}
+
+  /* Native tətbiq hissi verən sabit alt menyu */
+  .mobile-bottom-nav{
+    position:fixed;
+    z-index:80;
+    left:8px;
+    right:8px;
+    bottom:calc(7px + var(--safe-bottom));
+    height:64px;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    align-items:center;
+    gap:3px;
+    padding:6px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:20px;
+    background:rgba(10,14,20,.91);
+    backdrop-filter:blur(24px) saturate(1.2);
+    -webkit-backdrop-filter:blur(24px) saturate(1.2);
+    box-shadow:0 18px 60px rgba(0,0,0,.48);
+  }
+  .mobile-nav-item{
+    position:relative;
+    height:50px;
+    min-width:0;
+    border:0;
+    border-radius:14px;
+    background:transparent;
+    color:#7f8b9b;
+    display:grid;
+    place-items:center;
+    align-content:center;
+    gap:2px;
+    padding:2px;
+  }
+  .mobile-nav-item span{font-size:17px;line-height:1}
+  .mobile-nav-item b{
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:8px;
+    font-weight:750;
+  }
+  .mobile-nav-item.active{
+    color:#dcd6ff;
+    background:rgba(124,92,255,.13);
+  }
+  .mobile-nav-add{
+    width:50px;
+    height:50px;
+    justify-self:center;
+    border-radius:17px;
+    color:white;
+    background:linear-gradient(145deg,#8365ff,#6445ef);
+    box-shadow:0 8px 24px rgba(124,92,255,.30);
+  }
+  .mobile-nav-add span{font-size:22px}
+  .mobile-nav-add b{font-size:7px;color:#eeeaff}
+
+  .toast-host{
+    right:12px;
+    bottom:calc(82px + var(--safe-bottom));
+    width:calc(100% - 24px);
+  }
+
+  dialog.modal{
+    margin:auto;
+    width:calc(100% - 14px)!important;
+    max-height:calc(100dvh - 18px)!important;
+  }
+}
+
+@media(max-width:390px){
+  /* Köhnə 1 sütun override-ını ləğv edir */
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .stat-card{padding:12px 11px!important}
+  .stat-card strong{font-size:20px!important}
+  .mobile-bottom-nav{left:6px;right:6px}
+}
+
+@media(display-mode:standalone){
+  body{overscroll-behavior-y:none}
+  .topbar{padding-top:max(12px,env(safe-area-inset-top))}
+}
