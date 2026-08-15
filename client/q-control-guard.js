@@ -25,7 +25,7 @@ const Q = {
   projectKey: window.Q_CONTROL?.projectKey || "",
   domain: window.Q_CONTROL?.domain || location.hostname,
   timeoutMs: 5000,
-  cacheMs: 60000
+  cacheMs: 10000
 };
 
 const gateStyle = document.createElement("style");
