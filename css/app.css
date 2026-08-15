@@ -1176,3 +1176,70 @@ body{
     gap:8px!important;
   }
 }
+
+
+/* ============================================================
+   Q-CONTROL — DASHBOARD STATS SYMMETRY FIX
+   Yalnız görünüş üçündür. JS / Supabase / ödəniş məntiqinə toxunmur.
+   ============================================================ */
+
+/* Desktop: 8 statistik kartı 4 + 4 tam simmetrik göstər */
+@media(min-width:1200px){
+  #dashboardView .stats-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-auto-rows:1fr;
+    gap:14px!important;
+  }
+
+  #dashboardView .stat-card{
+    min-width:0;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+  }
+
+  #dashboardView .stat-card strong{
+    margin-top:auto;
+    padding-top:10px;
+  }
+
+  #dashboardView .stat-card small{
+    min-height:14px;
+  }
+}
+
+/* Orta ekranlar: 4 kartlıq ritmi qoruyur, sıxlaşanda 2 sütuna düşür */
+@media(min-width:900px) and (max-width:1199px){
+  #dashboardView .stats-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:11px!important;
+  }
+
+  #dashboardView .stat-card{
+    padding:15px!important;
+  }
+
+  #dashboardView .stat-card strong{
+    font-size:23px!important;
+  }
+}
+
+@media(min-width:761px) and (max-width:899px){
+  #dashboardView .stats-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+}
+
+/* Telefon: əvvəlki professional 2 sütun görünüşü saxlanılır */
+@media(max-width:760px){
+  #dashboardView .stats-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-auto-rows:1fr;
+  }
+
+  #dashboardView .stat-card{
+    height:100%;
+  }
+}
