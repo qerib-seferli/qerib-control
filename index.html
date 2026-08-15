@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0d12">
+  <meta name="description" content="Q-Control şəxsi xidmət və layihə nəzarət paneli">
+  <title>Q-Control</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
+  <link rel="stylesheet" href="./css/app.css">
+</head>
+<body>
+  <div id="boot" class="boot">
+    <div class="brand-mark">Q</div>
+    <div class="boot-line"></div>
+    <span>Q-Control hazırlanır…</span>
+  </div>
+
+  <main id="loginView" class="login-view hidden">
+    <section class="login-card">
+      <div class="login-brand">
+        <div class="brand-mark">Q</div>
+        <div>
+          <h1>Q-Control</h1>
+          <p>Şəxsi xidmət nəzarət sistemi</p>
+        </div>
+      </div>
+      <form id="loginForm" class="form-stack">
+        <label class="field">
+          <span>Email</span>
+          <input id="loginEmail" type="email" autocomplete="username" placeholder="admin@email.com" required>
+        </label>
+        <label class="field">
+          <span>Şifrə</span>
+          <div class="password-row">
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" required minlength="6">
+            <button id="togglePassword" type="button" class="icon-btn" aria-label="Şifrəni göstər">◉</button>
+          </div>
+        </label>
+        <button class="btn btn-primary btn-block" type="submit">Daxil ol</button>
+      </form>
+      <p class="login-note">Bu panel yalnız səlahiyyətli istifadəçi üçündür.</p>
+    </section>
+  </main>
+
+  <div id="appView" class="app-shell hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark small">Q</div>
+        <div>
+          <strong>Q-Control</strong>
+          <span>Private Console</span>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard">
+          <span>◫</span><b>Dashboard</b>
+        </button>
+        <button class="nav-item" data-view="projects">
+          <span>◇</span><b>Layihələr</b>
+        </button>
+        <button class="nav-item" data-view="payments">
+          <span>₼</span><b>Ödənişlər</b>
+        </button>
+        <button class="nav-item" data-view="logs">
+          <span>≡</span><b>Tarixçə</b>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <span>⚙</span><b>Parametrlər</b>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="admin-mini">
+          <div class="avatar">Q</div>
+          <div>
+            <strong id="adminName">Admin</strong>
+            <span id="adminEmail">—</span>
+          </div>
+        </div>
+        <button id="logoutBtn" class="btn btn-ghost btn-block">Çıxış</button>
+      </div>
+    </aside>
+
+    <section class="main-area">
+      <header class="topbar">
+        <button id="menuBtn" class="icon-btn mobile-only" aria-label="Menyu">☰</button>
+        <div>
+          <h2 id="viewTitle">Dashboard</h2>
+          <p id="viewSubtitle">Bütün xidmətlərin cari vəziyyəti</p>
+        </div>
+        <div class="topbar-actions">
+          <div id="connectionBadge" class="status-pill online">● Onlayn</div>
+          <button id="installBtn" class="btn btn-soft hidden">PWA quraşdır</button>
+          <button id="addProjectBtn" class="btn btn-primary">+ Layihə</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <section id="dashboardView" class="view active">
+          <div class="stats-grid">
+            <article class="stat-card">
+              <span>Aktiv layihə</span>
+              <strong id="statActive">0</strong>
+              <small>hazırda işləyir</small>
+            </article>
+            <article class="stat-card">
+              <span>Dayandırılıb</span>
+              <strong id="statSuspended">0</strong>
+              <small>müdaxilə tələb edir</small>
+            </article>
+            <article class="stat-card">
+              <span>Vaxtı yaxınlaşır</span>
+              <strong id="statDueSoon">0</strong>
+              <small>7 gün ərzində</small>
+            </article>
+            <article class="stat-card">
+              <span>Aylıq portfel</span>
+              <strong id="statMRR">0 ₼</strong>
+              <small>aktiv layihələr üzrə</small>
+            </article>
+          </div>
+
+          <div class="section-head">
+            <div>
+              <h3>Layihələr</h3>
+              <p>Ödəniş və xidmət statuslarına sürətli nəzarət</p>
+            </div>
+            <div class="toolbar">
+              <input id="dashboardSearch" class="search-input" placeholder="Layihə axtar…">
+              <select id="dashboardFilter" class="select-compact">
+                <option value="all">Hamısı</option>
+                <option value="active">Aktiv</option>
+                <option value="suspended">Dayandırılıb</option>
+                <option value="due">Vaxtı yaxın</option>
+              </select>
+            </div>
+          </div>
+          <div id="projectCards" class="project-grid"></div>
+        </section>
+
+        <section id="projectsView" class="view">
+          <div class="section-head">
+            <div>
+              <h3>Bütün layihələr</h3>
+              <p>Ətraflı status, domen və ödəniş idarəsi</p>
+            </div>
+            <input id="projectsSearch" class="search-input" placeholder="Axtar…">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Layihə</th>
+                  <th>Status</th>
+                  <th>Aylıq</th>
+                  <th>Bitmə tarixi</th>
+                  <th>Avto</th>
+                  <th>Əməliyyat</th>
+                </tr>
+              </thead>
+              <tbody id="projectsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="paymentsView" class="view">
+          <div class="section-head">
+            <div>
+              <h3>Ödəniş tarixçəsi</h3>
+              <p>Qeyd edilmiş bütün ödənişlər</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarix</th>
+                  <th>Layihə</th>
+                  <th>Məbləğ</th>
+                  <th>Müddət</th>
+                  <th>Period</th>
+                  <th>Qeyd</th>
+                </tr>
+              </thead>
+              <tbody id="paymentsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="logsView" class="view">
+          <div class="section-head">
+            <div>
+              <h3>Fəaliyyət jurnalı</h3>
+              <p>Paneldə edilən əsas dəyişikliklərin audit izi</p>
+            </div>
+          </div>
+          <div id="logsList" class="logs-list"></div>
+        </section>
+
+        <section id="settingsView" class="view">
+          <div class="settings-grid">
+            <article class="panel-card">
+              <h3>Profil</h3>
+              <p>Paneldə görünən adınızı dəyişin.</p>
+              <form id="profileForm" class="form-stack compact">
+                <label class="field">
+                  <span>Ad</span>
+                  <input id="profileName" maxlength="80" placeholder="Qərib">
+                </label>
+                <button class="btn btn-primary" type="submit">Yadda saxla</button>
+              </form>
+            </article>
+            <article class="panel-card">
+              <h3>Sistem</h3>
+              <div class="kv"><span>PWA</span><b>Aktiv</b></div>
+              <div class="kv"><span>Supabase</span><b id="supabaseState">Yoxlanılır…</b></div>
+              <div class="kv"><span>Auto suspend</span><b>Database + real-time RPC</b></div>
+              <div class="kv"><span>Versiya</span><b>1.0.0</b></div>
+            </article>
+            <article class="panel-card danger-card">
+              <h3>Təhlükəsizlik</h3>
+              <p>Admin olmayan hesablar panel məlumatlarına RLS səbəbilə daxil ola bilməz.</p>
+              <button id="refreshSessionBtn" class="btn btn-soft">Sessiyanı yenilə</button>
+            </article>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
+
+  <dialog id="projectDialog" class="modal">
+    <form id="projectForm" method="dialog">
+      <div class="modal-head">
+        <div>
+          <h3 id="projectDialogTitle">Yeni layihə</h3>
+          <p>Layihənin xidmət və ödəniş parametrləri</p>
+        </div>
+        <button type="button" class="icon-btn" data-close-dialog="projectDialog">✕</button>
+      </div>
+      <input id="projectId" type="hidden">
+      <div class="form-grid">
+        <label class="field span-2">
+          <span>Layihə adı *</span>
+          <input id="projectName" required maxlength="120" placeholder="Meyvəçi.az">
+        </label>
+        <label class="field">
+          <span>Slug *</span>
+          <input id="projectSlug" required maxlength="80" placeholder="meyveci">
+        </label>
+        <label class="field">
+          <span>Domen</span>
+          <input id="projectDomain" maxlength="200" placeholder="meyveci.az">
+        </label>
+        <label class="field">
+          <span>Aylıq məbləğ (₼)</span>
+          <input id="projectPrice" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label class="field">
+          <span>Ödəniş bitmə tarixi</span>
+          <input id="projectPaidUntil" type="datetime-local">
+        </label>
+        <label class="field">
+          <span>Status</span>
+          <select id="projectStatus">
+            <option value="active">Aktiv</option>
+            <option value="suspended">Dayandırılıb</option>
+            <option value="cancelled">Ləğv edilib</option>
+          </select>
+        </label>
+        <label class="switch-field">
+          <input id="projectAutoSuspend" type="checkbox" checked>
+          <span class="switch"></span>
+          <span>
+            <b>Avtomatik dayandır</b>
+            <small>Tarix keçəndə xidmət dayansın</small>
+          </span>
+        </label>
+        <label class="field span-2">
+          <span>Dayandırılma başlığı</span>
+          <input id="projectMaintenanceTitle" maxlength="140" value="Xidmət müvəqqəti dayandırılıb">
+        </label>
+        <label class="field span-2">
+          <span>Dayandırılma mətni</span>
+          <textarea id="projectMaintenanceMessage" rows="3" maxlength="500">Sistem infrastrukturu üzrə xidmət hazırda əlçatan deyil. Xidmət bərpa edildikdən sonra platforma avtomatik olaraq yenidən aktiv olacaq.</textarea>
+        </label>
+        <label class="field span-2">
+          <span>Daxili qeyd</span>
+          <textarea id="projectNotes" rows="2" maxlength="1000" placeholder="Yalnız sizin paneldə görünür"></textarea>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close-dialog="projectDialog">Ləğv et</button>
+        <button type="submit" class="btn btn-primary">Yadda saxla</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="extendDialog" class="modal small-modal">
+    <form id="extendForm" method="dialog">
+      <div class="modal-head">
+        <div>
+          <h3>Ödəniş alındı</h3>
+          <p id="extendProjectName">—</p>
+        </div>
+        <button type="button" class="icon-btn" data-close-dialog="extendDialog">✕</button>
+      </div>
+      <input id="extendProjectId" type="hidden">
+      <div class="month-picks">
+        <button type="button" data-months="1" class="month-btn active">1 ay</button>
+        <button type="button" data-months="3" class="month-btn">3 ay</button>
+        <button type="button" data-months="6" class="month-btn">6 ay</button>
+        <button type="button" data-months="12" class="month-btn">12 ay</button>
+      </div>
+      <input id="extendMonths" type="hidden" value="1">
+      <div class="form-grid">
+        <label class="field">
+          <span>Məbləğ (₼)</span>
+          <input id="extendAmount" type="number" min="0" step="0.01" required>
+        </label>
+        <label class="field">
+          <span>Ödəniş tarixi</span>
+          <input id="extendPaidAt" type="datetime-local" required>
+        </label>
+        <label class="field span-2">
+          <span>Qeyd</span>
+          <input id="extendNote" maxlength="300" placeholder="Kart / nağd / köçürmə və s.">
+        </label>
+      </div>
+      <div id="extendPreview" class="preview-box"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close-dialog="extendDialog">Ləğv et</button>
+        <button type="submit" class="btn btn-primary">Ödənişi qeyd et və aktivləşdir</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="detailDialog" class="modal">
+    <div class="modal-head">
+      <div>
+        <h3 id="detailName">Layihə</h3>
+        <p id="detailDomain">—</p>
+      </div>
+      <button type="button" class="icon-btn" data-close-dialog="detailDialog">✕</button>
+    </div>
+    <div id="detailContent"></div>
+    <div class="modal-actions">
+      <button id="copyIntegrationBtn" class="btn btn-soft">İnteqrasiya kodunu kopyala</button>
+      <button id="editFromDetailBtn" class="btn btn-primary">Redaktə et</button>
+    </div>
+  </dialog>
+
+  <div id="toastHost" class="toast-host" aria-live="polite"></div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

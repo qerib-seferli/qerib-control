@@ -1,0 +1,130 @@
+import { supabase } from "./supabase.js";
+
+export async function getSession() {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session;
+}
+
+export async function signIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  return data;
+}
+
+export async function signOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+}
+
+export async function getMe() {
+  const { data, error } = await supabase.rpc("get_control_me");
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProfileName(displayName) {
+  const { data, error } = await supabase.rpc("update_control_profile", { p_display_name: displayName });
+  if (error) throw error;
+  return data;
+}
+
+export async function listProjects() {
+  const { data, error } = await supabase.from("control_projects")
+    .select("*")
+    .eq("is_archived", false)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function saveProject(payload) {
+  const fn = payload.id ? "update_control_project" : "create_control_project";
+  const args = payload.id
+    ? {
+        p_id: payload.id,
+        p_name: payload.name,
+        p_slug: payload.slug,
+        p_domain: payload.domain || null,
+        p_monthly_price: payload.monthly_price,
+        p_status: payload.status,
+        p_paid_until: payload.paid_until,
+        p_auto_suspend: payload.auto_suspend,
+        p_maintenance_title: payload.maintenance_title,
+        p_maintenance_message: payload.maintenance_message,
+        p_notes: payload.notes || null
+      }
+    : {
+        p_name: payload.name,
+        p_slug: payload.slug,
+        p_domain: payload.domain || null,
+        p_monthly_price: payload.monthly_price,
+        p_status: payload.status,
+        p_paid_until: payload.paid_until,
+        p_auto_suspend: payload.auto_suspend,
+        p_maintenance_title: payload.maintenance_title,
+        p_maintenance_message: payload.maintenance_message,
+        p_notes: payload.notes || null
+      };
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) throw error;
+  return data;
+}
+
+export async function setProjectStatus(projectId, status, note = null) {
+  const { data, error } = await supabase.rpc("set_control_project_status", {
+    p_project_id: projectId,
+    p_status: status,
+    p_note: note
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function recordPaymentAndExtend({ projectId, months, amount, paidAt, note }) {
+  const { data, error } = await supabase.rpc("record_control_payment", {
+    p_project_id: projectId,
+    p_months: Number(months),
+    p_amount: Number(amount),
+    p_paid_at: paidAt,
+    p_note: note || null
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function archiveProject(projectId) {
+  const { data, error } = await supabase.rpc("archive_control_project", { p_project_id: projectId });
+  if (error) throw error;
+  return data;
+}
+
+export async function regeneratePublicKey(projectId) {
+  const { data, error } = await supabase.rpc("regenerate_control_public_key", { p_project_id: projectId });
+  if (error) throw error;
+  return data;
+}
+
+export async function listPayments(limit = 300) {
+  const { data, error } = await supabase.from("control_payments")
+    .select("*, control_projects(name,domain)")
+    .order("paid_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function listLogs(limit = 300) {
+  const { data, error } = await supabase.from("control_activity_logs")
+    .select("*, control_projects(name)")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function refreshStatuses() {
+  const { data, error } = await supabase.rpc("refresh_control_project_statuses");
+  if (error) throw error;
+  return data;
+}
