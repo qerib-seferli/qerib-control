@@ -600,3 +600,458 @@ button,.nav-item,.mobile-nav-item{touch-action:manipulation}
     flex-basis:38px;
   }
 }
+
+
+/* ============================================================
+   Q-CONTROL — FINAL PRO VISUAL POLISH
+   Yalnız CSS/UI. İşlək JS, Auth, Supabase və Cloudflare məntiqinə toxunmur.
+   ============================================================ */
+
+:root{
+  --qc-purple:#7858ff;
+  --qc-purple-2:#9a84ff;
+  --qc-green:#35e3a4;
+  --qc-red:#ff6b84;
+  --qc-deep:#070a0f;
+  --qc-card:#0e141d;
+  --qc-shadow:0 18px 48px rgba(0,0,0,.30);
+}
+
+/* ---------- Q-Control-un öz tətbiq iconu ---------- */
+/* assets/icons/icon-192.png boot, login, sidebar və təsdiq modalında görünür. */
+.brand-mark{
+  color:transparent!important;
+  font-size:0!important;
+  overflow:hidden;
+  background-color:#111722!important;
+  background-image:url("../assets/icons/icon-192.png")!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:cover!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 12px 32px rgba(92,63,224,.28)!important;
+}
+.brand-mark:after{display:none!important}
+
+.login-brand .brand-mark{
+  width:62px;
+  height:62px;
+  flex:0 0 62px;
+  border-radius:19px;
+}
+.sidebar-brand .brand-mark.small{
+  width:43px;
+  height:43px;
+  flex:0 0 43px;
+  border-radius:13px;
+}
+.boot .brand-mark{
+  width:64px;
+  height:64px;
+  border-radius:20px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.12),
+    0 16px 42px rgba(92,63,224,.35)!important;
+}
+
+/* Q-Control təsdiq modalında da app iconu */
+.confirm-icon:not(.danger){
+  color:transparent!important;
+  font-size:0!important;
+  background:
+    url("../assets/icons/icon-192.png") center/cover no-repeat!important;
+  border-color:rgba(154,132,255,.24)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 9px 22px rgba(92,63,224,.24);
+}
+
+/* ---------- ümumi premium dərinlik ---------- */
+body{
+  background:
+    radial-gradient(circle at 12% -8%,rgba(124,92,255,.15),transparent 31%),
+    radial-gradient(circle at 92% 7%,rgba(53,227,164,.045),transparent 27%),
+    linear-gradient(180deg,#090c12 0%,#07090d 100%)!important;
+}
+.stat-card,
+.project-card,
+.panel-card,
+.table-wrap,
+.payment-summary article{
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.035),
+    var(--qc-shadow);
+}
+
+/* ---------- sidebar / hamburger drawer ---------- */
+.sidebar-brand{
+  gap:14px!important;
+}
+.sidebar-brand strong{
+  font-size:16px;
+  letter-spacing:-.01em;
+}
+.sidebar-brand span{
+  margin-top:3px;
+}
+
+/* Drawer açıq olanda alt mobil dock logout düyməsinin üstünə çıxmasın */
+@media(max-width:760px){
+  .sidebar{
+    z-index:110!important;
+    height:100dvh!important;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))!important;
+  }
+  .sidebar.open{
+    z-index:120!important;
+  }
+  .sidebar-footer{
+    padding-top:18px;
+    padding-bottom:max(4px,env(safe-area-inset-bottom,0px));
+  }
+  body:has(.sidebar.open) .mobile-bottom-nav{
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transform:translateY(115%);
+  }
+  .drawer-backdrop{
+    z-index:100!important;
+  }
+}
+
+/* ---------- layihə kartı: icon / mətn aralığı ---------- */
+.project-card{
+  border-color:rgba(255,255,255,.075)!important;
+  background:
+    radial-gradient(circle at 100% 0,rgba(124,92,255,.07),transparent 40%),
+    linear-gradient(155deg,rgba(18,24,33,.98),rgba(10,14,20,.98))!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 18px 42px rgba(0,0,0,.27)!important;
+}
+.project-card:hover{
+  border-color:rgba(154,132,255,.25)!important;
+  transform:translateY(-2px);
+}
+.project-card:before{
+  width:3px!important;
+  box-shadow:0 0 18px rgba(124,92,255,.48);
+}
+
+.project-top{
+  align-items:center!important;
+  gap:15px!important;
+  min-height:50px;
+}
+.project-icon{
+  width:48px!important;
+  height:48px!important;
+  flex:0 0 48px!important;
+  padding:4px!important;
+  border-radius:15px!important;
+  border:1px solid rgba(154,132,255,.18)!important;
+  background:
+    linear-gradient(145deg,rgba(124,92,255,.12),rgba(13,18,27,.98))!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.07),
+    0 8px 22px rgba(0,0,0,.24);
+}
+.project-icon img,
+.table-project-icon img,
+.detail-project-icon img{
+  object-fit:contain!important;
+}
+.project-icon img{
+  border-radius:11px!important;
+}
+.project-meta{
+  min-width:0;
+  padding-left:2px!important;
+}
+.project-meta h4{
+  margin:0 0 5px!important;
+  font-size:15px!important;
+  line-height:1.15;
+}
+.project-meta p{
+  margin:0!important;
+  line-height:1.25;
+}
+
+/* Cədvəl və digər yerlərdə layihə ikonları */
+.table-project{
+  gap:12px!important;
+}
+.table-project-icon{
+  width:38px!important;
+  height:38px!important;
+  flex:0 0 38px!important;
+  padding:3px!important;
+  border-radius:12px!important;
+  border:1px solid rgba(124,92,255,.14)!important;
+  background:linear-gradient(145deg,rgba(124,92,255,.11),#111722)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 6px 16px rgba(0,0,0,.20);
+}
+.table-project-icon img{border-radius:9px!important}
+
+.detail-project-head{
+  gap:14px!important;
+}
+.detail-project-icon{
+  width:54px!important;
+  height:54px!important;
+  flex:0 0 54px!important;
+  padding:4px!important;
+  border-radius:17px!important;
+  border:1px solid rgba(124,92,255,.15)!important;
+  background:linear-gradient(145deg,rgba(124,92,255,.12),#101722)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 8px 22px rgba(0,0,0,.22);
+}
+.detail-project-icon img{border-radius:12px!important}
+
+/* ---------- Aktiv / dayandırılıb statusu canlı indikator ---------- */
+/* Mövcud "● AKTİV" mətnini vizual olaraq premium indikatora çevirir. */
+.badge.active,
+.badge.suspended{
+  font-size:0!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:0!important;
+  min-height:28px;
+  padding:6px 10px!important;
+  border:1px solid transparent;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.badge.active:before,
+.badge.suspended:before{
+  content:"";
+  width:7px;
+  height:7px;
+  flex:0 0 7px;
+  border-radius:50%;
+  margin-right:7px;
+  animation:qcLivePulse 1.45s ease-in-out infinite;
+}
+.badge.active:after,
+.badge.suspended:after{
+  font-size:10px;
+  line-height:1;
+  font-weight:850;
+  letter-spacing:.015em;
+}
+.badge.active{
+  color:#8ff2cf!important;
+  border-color:rgba(53,227,164,.16)!important;
+  background:linear-gradient(180deg,rgba(53,227,164,.13),rgba(53,227,164,.075))!important;
+}
+.badge.active:before{
+  background:var(--qc-green);
+  box-shadow:0 0 11px rgba(53,227,164,.72);
+}
+.badge.active:after{content:"AKTİV"}
+
+.badge.suspended{
+  color:#ff9caf!important;
+  border-color:rgba(255,107,132,.17)!important;
+  background:linear-gradient(180deg,rgba(255,107,132,.14),rgba(255,107,132,.075))!important;
+}
+.badge.suspended:before{
+  background:var(--qc-red);
+  box-shadow:0 0 11px rgba(255,107,132,.72);
+}
+.badge.suspended:after{content:"DAYANDIRILIB"}
+
+@keyframes qcLivePulse{
+  0%,100%{
+    opacity:1;
+    transform:scale(1);
+  }
+  50%{
+    opacity:.28;
+    transform:scale(.72);
+  }
+}
+
+/* ---------- layihə kartının daxili məlumatları ---------- */
+.mini-kv{
+  border-color:rgba(255,255,255,.055)!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.015))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+/* ---------- premium tactile düymələr ---------- */
+.btn{
+  border-color:rgba(255,255,255,.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    0 7px 18px rgba(0,0,0,.17);
+}
+.btn:active{
+  transform:translateY(1px) scale(.99);
+}
+.btn-primary{
+  border-color:rgba(190,177,255,.22)!important;
+  background:linear-gradient(180deg,#8569ff 0%,#6948ee 58%,#5c3ddb 100%)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.23),
+    inset 0 -7px 14px rgba(44,22,126,.17),
+    0 10px 24px rgba(104,73,239,.25)!important;
+}
+.btn-success{
+  background:linear-gradient(180deg,rgba(41,202,145,.18),rgba(21,138,99,.11))!important;
+}
+.btn-danger{
+  background:linear-gradient(180deg,rgba(255,104,129,.17),rgba(151,49,68,.10))!important;
+}
+
+/* ---------- mobil alt menyu: premium 3D dock ---------- */
+@media(max-width:760px){
+  .mobile-bottom-nav{
+    height:72px!important;
+    left:9px!important;
+    right:9px!important;
+    bottom:calc(8px + var(--safe-bottom))!important;
+    padding:7px 6px!important;
+    gap:4px!important;
+    border-radius:24px!important;
+    border:1px solid rgba(255,255,255,.115)!important;
+    background:
+      linear-gradient(180deg,rgba(20,26,37,.96),rgba(8,12,18,.97))!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.075),
+      inset 0 -1px 0 rgba(0,0,0,.45),
+      0 20px 58px rgba(0,0,0,.60),
+      0 0 0 1px rgba(0,0,0,.18)!important;
+    transition:opacity .18s ease,visibility .18s ease,transform .22s ease;
+  }
+
+  .mobile-nav-item{
+    height:55px!important;
+    border-radius:17px!important;
+    color:#7f8b9a!important;
+    transition:
+      transform .18s ease,
+      color .18s ease,
+      background .18s ease,
+      box-shadow .18s ease!important;
+  }
+  .mobile-nav-item span{
+    width:31px!important;
+    height:27px!important;
+    display:grid!important;
+    place-items:center!important;
+    border-radius:10px!important;
+    font-size:16px!important;
+    line-height:1!important;
+    text-shadow:0 1px 0 rgba(0,0,0,.65);
+  }
+  .mobile-nav-item b{
+    margin-top:1px!important;
+    font-size:7.5px!important;
+    letter-spacing:.005em;
+  }
+  .mobile-nav-item:active{
+    transform:translateY(1px) scale(.96);
+  }
+
+  .mobile-nav-item.active:not(.mobile-nav-add){
+    color:#e8e3ff!important;
+    background:
+      linear-gradient(180deg,rgba(124,92,255,.20),rgba(124,92,255,.075))!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.09),
+      inset 0 -8px 16px rgba(58,38,133,.10)!important;
+  }
+  .mobile-nav-item.active:not(.mobile-nav-add) span{
+    color:#fff!important;
+    background:
+      linear-gradient(145deg,rgba(143,115,255,.31),rgba(87,58,205,.18))!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.14),
+      0 6px 16px rgba(85,57,205,.21);
+  }
+
+  /* ortadakı + Yeni düyməsi real 3D */
+  .mobile-nav-add{
+    width:56px!important;
+    height:56px!important;
+    justify-self:center!important;
+    border-radius:19px!important;
+    transform:translateY(-8px);
+    border:1px solid rgba(205,195,255,.31)!important;
+    background:
+      radial-gradient(circle at 31% 18%,rgba(255,255,255,.31),transparent 26%),
+      linear-gradient(160deg,#947aff 0%,#7555ff 48%,#5a3adc 100%)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.33),
+      inset 0 -9px 15px rgba(49,24,130,.23),
+      0 12px 28px rgba(104,73,239,.44),
+      0 4px 0 rgba(53,29,144,.45)!important;
+  }
+  .mobile-nav-add span{
+    width:auto!important;
+    height:auto!important;
+    font-size:23px!important;
+    background:none!important;
+    box-shadow:none!important;
+  }
+  .mobile-nav-add b{color:#f4f1ff!important}
+  .mobile-nav-add:active{
+    transform:translateY(-4px) scale(.96)!important;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.23),
+      inset 0 -5px 10px rgba(49,24,130,.20),
+      0 6px 16px rgba(104,73,239,.32)!important;
+  }
+
+  /* kartda icon + mətn daha rahat nəfəs alsın */
+  .project-top{
+    gap:14px!important;
+  }
+  .project-icon{
+    width:50px!important;
+    height:50px!important;
+    flex-basis:50px!important;
+  }
+  .project-meta h4{
+    font-size:15.5px!important;
+  }
+  .project-actions .btn{
+    min-height:40px;
+    border-radius:12px;
+  }
+
+  /* dock kontentin üstünü örtməsin */
+  .content{
+    padding-bottom:calc(106px + var(--safe-bottom))!important;
+  }
+  .toast-host{
+    bottom:calc(96px + var(--safe-bottom))!important;
+  }
+}
+
+/* Çox dar cihazlarda status kartın üst hissəsini sıxmasın */
+@media(max-width:365px){
+  .project-top{
+    display:grid!important;
+    grid-template-columns:50px minmax(0,1fr);
+    gap:11px 13px!important;
+  }
+  .project-top .badge{
+    grid-column:1/-1;
+    justify-self:start;
+  }
+}
+
+/* Accessibility: cihaz motion azaltmaq istəyirsə pulse sakit olsun */
+@media(prefers-reduced-motion:reduce){
+  .badge.active:before,
+  .badge.suspended:before{
+    animation:none!important;
+  }
+}
