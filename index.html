@@ -245,6 +245,21 @@
       </div>
       <input id="projectId" type="hidden">
       <div class="form-grid">
+        <div class="project-icon-field span-2">
+          <button id="projectIconButton" class="project-icon-picker" type="button" aria-label="Layihə ikonu seç">
+            <span id="projectIconFallback">+</span>
+            <img id="projectIconPreview" class="hidden" alt="Layihə ikonu">
+          </button>
+          <div class="project-icon-copy">
+            <b>Layihə ikonu</b>
+            <span>PNG/JPG/WebP seç. Şəkil avtomatik 256×256 WebP optimizasiya olunur.</span>
+            <div class="project-icon-actions">
+              <button id="chooseProjectIconBtn" type="button" class="btn btn-soft">Şəkil seç</button>
+              <button id="removeProjectIconBtn" type="button" class="btn btn-ghost hidden">İkonu sil</button>
+            </div>
+          </div>
+          <input id="projectIconInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+        </div>
         <label class="field span-2">
           <span>Layihə adı *</span>
           <input id="projectName" required maxlength="120" placeholder="Meyvəçi.az">
@@ -341,8 +356,9 @@
   </dialog>
 
   <dialog id="detailDialog" class="modal">
-    <div class="modal-head">
-      <div>
+    <div class="modal-head detail-project-head">
+      <div id="detailProjectIcon" class="detail-project-icon">Q</div>
+      <div class="detail-project-title">
         <h3 id="detailName">Layihə</h3>
         <p id="detailDomain">—</p>
       </div>
@@ -352,6 +368,20 @@
     <div class="modal-actions">
       <button id="copyIntegrationBtn" class="btn btn-soft">İnteqrasiya kodunu kopyala</button>
       <button id="editFromDetailBtn" class="btn btn-primary">Redaktə et</button>
+    </div>
+  </dialog>
+
+  <dialog id="confirmDialog" class="modal confirm-modal">
+    <div class="confirm-body">
+      <div id="confirmIcon" class="confirm-icon">Q</div>
+      <div>
+        <h3 id="confirmTitle">Təsdiq</h3>
+        <p id="confirmMessage">Əməliyyatı təsdiqləyirsiniz?</p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="confirmCancelBtn" type="button" class="btn btn-ghost">Ləğv et</button>
+      <button id="confirmOkBtn" type="button" class="btn btn-primary">Təsdiqlə</button>
     </div>
   </dialog>
 

@@ -128,3 +128,51 @@ export async function refreshStatuses() {
   if (error) throw error;
   return data;
 }
+
+
+export async function uploadProjectIcon(projectId, blob) {
+  const path = `${projectId}/icon.webp`;
+
+  // Eyni path istifadə olunur: köhnə obyekt əvvəl Storage API ilə silinir.
+  await supabase.storage.from("project-icons").remove([path]);
+
+  const { error: uploadError } = await supabase.storage
+    .from("project-icons")
+    .upload(path, blob, {
+      contentType: "image/webp",
+      cacheControl: "3600",
+      upsert: true
+    });
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage.from("project-icons").getPublicUrl(path);
+  const iconUrl = `${data.publicUrl}?v=${Date.now()}`;
+
+  const { error: updateError } = await supabase
+    .from("control_projects")
+    .update({ icon_url: iconUrl })
+    .eq("id", projectId);
+  if (updateError) throw updateError;
+
+  return iconUrl;
+}
+
+export async function deleteProjectIcon(projectId) {
+  const path = `${projectId}/icon.webp`;
+  const { error: removeError } = await supabase.storage.from("project-icons").remove([path]);
+  if (removeError) throw removeError;
+
+  const { error: updateError } = await supabase
+    .from("control_projects")
+    .update({ icon_url: null })
+    .eq("id", projectId);
+  if (updateError) throw updateError;
+}
+
+export async function checkDomainService(domain) {
+  const { data, error } = await supabase.rpc("check_control_service_by_domain", {
+    p_domain: domain
+  });
+  if (error) throw error;
+  return data;
+}

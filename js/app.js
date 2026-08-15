@@ -4,7 +4,7 @@ import * as api from "./api.js";
 import {
   $, $$, esc, money, formatDate, toDatetimeLocal, localToIso, nowLocalInput,
   daysUntil, effectiveStatus, statusLabel, slugify, addMonthsKeepingAnchor,
-  toast, copyText, safeDomain, confirmAction
+  toast, copyText, safeDomain
 } from "./core.js";
 
 const state = {
@@ -15,7 +15,10 @@ const state = {
   logs: [],
   view: "dashboard",
   deferredInstallPrompt: null,
-  detailProjectId: null
+  detailProjectId: null,
+  pendingIconFile: null,
+  pendingIconRemove: false,
+  confirmResolver: null
 };
 
 const viewMeta = {
@@ -78,6 +81,12 @@ function bindEvents() {
   $("#projectName").addEventListener("input", () => {
     if (!$("#projectId").value) $("#projectSlug").value = slugify($("#projectName").value);
   });
+  $("#projectIconButton").addEventListener("click", () => $("#projectIconInput").click());
+  $("#chooseProjectIconBtn").addEventListener("click", () => $("#projectIconInput").click());
+  $("#projectIconInput").addEventListener("change", handleIconPick);
+  $("#removeProjectIconBtn").addEventListener("click", handleIconRemove);
+  $("#confirmCancelBtn").addEventListener("click", () => resolveConfirm(false));
+  $("#confirmOkBtn").addEventListener("click", () => resolveConfirm(true));
   $("#projectForm").addEventListener("submit", handleProjectSave);
   $("#extendForm").addEventListener("submit", handleExtendSave);
   $$(".month-btn").forEach(btn => btn.addEventListener("click", () => selectMonths(Number(btn.dataset.months))));
@@ -222,10 +231,11 @@ function projectCardHtml(p) {
   const badgeClass = dueClass ? "due" : status;
   const badgeText = dueClass ? `${d === 0 ? "BU GÜN" : `${d} GÜN QALIB`}` : statusLabel(status);
   const initials = esc((p.name || "Q").trim().charAt(0).toUpperCase());
+  const icon = projectIconHtml(p, initials);
   return `
     <article class="project-card ${status}">
       <div class="project-top">
-        <div class="project-icon">${initials}</div>
+        <div class="project-icon">${icon}</div>
         <div class="project-meta">
           <h4>${esc(p.name)}</h4>
           <p>${esc(p.domain || p.slug)}</p>
@@ -254,7 +264,7 @@ function renderProjectsTable() {
   $("#projectsTableBody").innerHTML = list.length ? list.map(p => {
     const status = effectiveStatus(p);
     return `<tr>
-      <td><div class="cell-main"><strong>${esc(p.name)}</strong><span>${esc(p.domain || p.slug)}</span></div></td>
+      <td><div class="table-project"><div class="table-project-icon">${projectIconHtml(p, esc((p.name || "Q").trim().charAt(0).toUpperCase()))}</div><div class="cell-main"><strong>${esc(p.name)}</strong><span>${esc(p.domain || p.slug)}</span></div></div></td>
       <td><span class="badge ${status}">● ${statusLabel(status)}</span></td>
       <td>${money(p.monthly_price)}</td>
       <td>${formatDate(p.paid_until, true)}</td>
@@ -322,6 +332,11 @@ function switchView(view) {
 }
 
 function openProjectDialog(project = null) {
+  state.pendingIconFile = null;
+  state.pendingIconRemove = false;
+  $("#projectIconInput").value = "";
+  setProjectIconPreview(project?.icon_url || null, project?.name || "Q");
+  $("#removeProjectIconBtn").classList.toggle("hidden", !project?.icon_url);
   $("#projectDialogTitle").textContent = project ? "Layihəni redaktə et" : "Yeni layihə";
   $("#projectId").value = project?.id || "";
   $("#projectName").value = project?.name || "";
@@ -355,7 +370,19 @@ async function handleProjectSave(event) {
     notes: $("#projectNotes").value.trim()
   };
   try {
-    await api.saveProject(payload);
+    const savedId = await api.saveProject(payload);
+    const projectId = payload.id || savedId;
+
+    if (state.pendingIconRemove && projectId) {
+      await api.deleteProjectIcon(projectId);
+    }
+    if (state.pendingIconFile && projectId) {
+      const iconBlob = await prepareIconBlob(state.pendingIconFile);
+      await api.uploadProjectIcon(projectId, iconBlob);
+    }
+
+    state.pendingIconFile = null;
+    state.pendingIconRemove = false;
     $("#projectDialog").close();
     await loadAll();
     toast(payload.id ? "Layihə yeniləndi." : "Layihə yaradıldı.");
@@ -410,8 +437,16 @@ async function handleExtendSave(event) {
 }
 
 async function changeStatus(project, status) {
-  const label = status === "active" ? "aktivləşdirmək" : "dayandırmaq";
-  if (!confirmAction(`${project.name} layihəsini ${label} istəyirsiniz?`)) return;
+  const activating = status === "active";
+  const approved = await qConfirm({
+    title: activating ? "Layihə aktivləşdirilsin?" : "Xidmət dayandırılsın?",
+    message: activating
+      ? `${project.name} dərhal aktiv statusa keçiriləcək.`
+      : `${project.name} üçün xidmət ekranı aktiv ediləcək.`,
+    confirmText: activating ? "Aktivləşdir" : "Dayandır",
+    tone: activating ? "primary" : "danger"
+  });
+  if (!approved) return;
   try {
     await api.setProjectStatus(project.id, status);
     await loadAll();
@@ -426,14 +461,17 @@ function openDetail(project) {
   const status = effectiveStatus(project);
   $("#detailName").textContent = project.name;
   $("#detailDomain").textContent = project.domain || project.slug;
+  $("#detailProjectIcon").innerHTML = projectIconHtml(project, esc((project.name || "Q").trim().charAt(0).toUpperCase()));
   const integration = integrationSnippet(project);
+  const mode = project.domain ? "Cloudflare Worker" : "Frontend guard";
+  $("#copyIntegrationBtn").textContent = project.domain ? "Route məlumatını kopyala" : "İnteqrasiya kodunu kopyala";
   $("#detailContent").innerHTML = `
     <div class="detail-grid">
       <div class="detail-box"><span>Status</span><b>${statusLabel(status)}</b></div>
       <div class="detail-box"><span>Aylıq</span><b>${money(project.monthly_price)}</b></div>
       <div class="detail-box"><span>Bitmə tarixi</span><b>${formatDate(project.paid_until, true)}</b></div>
       <div class="detail-box"><span>Avto dayandırma</span><b>${project.auto_suspend ? "Aktiv" : "Söndürülüb"}</b></div>
-      <div class="detail-box"><span>Public key</span><b>${esc(project.public_key)}</b></div>
+      <div class="detail-box"><span>Qoruma üsulu</span><b>${mode}</b></div>
       <div class="detail-box"><span>Slug</span><b>${esc(project.slug)}</b></div>
     </div>
     <pre class="code-box">${esc(integration)}</pre>
@@ -445,13 +483,24 @@ function openDetail(project) {
 }
 
 function integrationSnippet(project) {
+  if (project.domain) {
+    return `Cloudflare Worker route:
+${project.domain}/*
+www.${project.domain}/*
+
+Worker: q-control-gateway
+Q-Control layihə domeni: ${project.domain}
+
+HTML və JS fayllarına heç bir kod əlavə etmək lazım deyil.`;
+  }
+
   return `<script>
 window.Q_CONTROL = {
   projectKey: "${project.public_key}",
-  domain: "${project.domain || ""}"
+  domain: ""
 };
 <\/script>
-<script type="module" src="/assets/js/q-control-guard.js"><\/script>`;
+<script src="https://qerib-seferli.github.io/qerib-control/client/q-control-guard.js"><\/script>`;
 }
 
 async function copyCurrentIntegration() {
@@ -504,7 +553,12 @@ async function handleDelegatedClick(event) {
   if (btn.dataset.action === "edit") return openProjectDialog(project);
 
   if (btn.dataset.action === "archive") {
-    if (!confirmAction(`${project.name} arxivlənsin? Məlumatlar silinməyəcək.`)) return;
+    if (!await qConfirm({
+      title: "Layihə arxivlənsin?",
+      message: `${project.name} siyahıdan çıxarılacaq, tarixçə və ödəniş məlumatları silinməyəcək.`,
+      confirmText: "Arxivlə",
+      tone: "danger"
+    })) return;
     try {
       await api.archiveProject(project.id);
       $("#detailDialog").close();
@@ -514,7 +568,12 @@ async function handleDelegatedClick(event) {
   }
 
   if (btn.dataset.action === "regen-key") {
-    if (!confirmAction("Public key dəyişdirilsin? Köhnə inteqrasiya dərhal işləməyəcək.")) return;
+    if (!await qConfirm({
+      title: "Public key yenilənsin?",
+      message: "Domeni olmayan frontend inteqrasiyalarında köhnə açar dərhal etibarsız olacaq.",
+      confirmText: "Yenilə",
+      tone: "danger"
+    })) return;
     try {
       await api.regeneratePublicKey(project.id);
       await loadAll();
@@ -522,6 +581,96 @@ async function handleDelegatedClick(event) {
       toast("Public key yeniləndi.");
     } catch (err) { toast(errorMessage(err), "error"); }
   }
+}
+
+function projectIconHtml(project, fallback = "Q") {
+  if (project?.icon_url) {
+    return `<img src="${esc(project.icon_url)}" alt="" loading="lazy">`;
+  }
+  return `<span>${fallback}</span>`;
+}
+
+function setProjectIconPreview(url, name = "Q") {
+  const img = $("#projectIconPreview");
+  const fallback = $("#projectIconFallback");
+  if (url) {
+    img.src = url;
+    img.classList.remove("hidden");
+    fallback.classList.add("hidden");
+  } else {
+    img.removeAttribute("src");
+    img.classList.add("hidden");
+    fallback.textContent = (name || "Q").trim().charAt(0).toUpperCase() || "Q";
+    fallback.classList.remove("hidden");
+  }
+}
+
+function handleIconPick(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+    toast("PNG, JPG və ya WebP şəkil seçin.", "error");
+    event.target.value = "";
+    return;
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    toast("Şəkil maksimum 8 MB ola bilər.", "error");
+    event.target.value = "";
+    return;
+  }
+  state.pendingIconFile = file;
+  state.pendingIconRemove = false;
+  setProjectIconPreview(URL.createObjectURL(file), $("#projectName").value || "Q");
+  $("#removeProjectIconBtn").classList.remove("hidden");
+}
+
+function handleIconRemove() {
+  state.pendingIconFile = null;
+  state.pendingIconRemove = true;
+  $("#projectIconInput").value = "";
+  setProjectIconPreview(null, $("#projectName").value || "Q");
+  $("#removeProjectIconBtn").classList.add("hidden");
+}
+
+async function prepareIconBlob(file) {
+  const bitmap = await createImageBitmap(file);
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d", { alpha: true });
+  const scale = Math.max(size / bitmap.width, size / bitmap.height);
+  const w = bitmap.width * scale;
+  const h = bitmap.height * scale;
+  ctx.drawImage(bitmap, (size - w) / 2, (size - h) / 2, w, h);
+  bitmap.close?.();
+
+  return await new Promise((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("İkon optimizasiya edilə bilmədi.")), "image/webp", 0.84);
+  });
+}
+
+function qConfirm({ title, message, confirmText = "Təsdiqlə", tone = "primary" }) {
+  const dialog = $("#confirmDialog");
+  $("#confirmTitle").textContent = title;
+  $("#confirmMessage").textContent = message;
+  const ok = $("#confirmOkBtn");
+  ok.textContent = confirmText;
+  ok.className = `btn ${tone === "danger" ? "btn-danger" : "btn-primary"}`;
+  $("#confirmIcon").textContent = tone === "danger" ? "!" : "Q";
+  $("#confirmIcon").classList.toggle("danger", tone === "danger");
+
+  return new Promise(resolve => {
+    state.confirmResolver = resolve;
+    dialog.showModal();
+  });
+}
+
+function resolveConfirm(value) {
+  $("#confirmDialog").close();
+  const resolve = state.confirmResolver;
+  state.confirmResolver = null;
+  resolve?.(value);
 }
 
 function getProject(id) {

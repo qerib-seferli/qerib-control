@@ -1,32 +1,25 @@
-# Müştəri saytına Q-Control qoşulması
+# Q-Control layihə inteqrasiyası
 
-## 1. Guard faylını əlavə et
-`q-control-guard.js` faylını müştəri reposunda, məsələn:
-`assets/js/q-control-guard.js`
+## 1) Real domen Cloudflare-dədirsə
+Frontend guard istifadə etmə.
 
-## 2. Q-Control panelindən Public key götür
-Layihə → Ətraflı → Public key.
+Universal `q-control-gateway` Worker-a route əlavə et:
+- `domain.az/*`
+- `www.domain.az/*` (www istifadə edilirsə)
 
-## 3. Müştərinin bütün əsas HTML səhifələrində `<head>` daxilində, app JS-dən əvvəl əlavə et
+HTML/JS dəyişiklik yoxdur.
+
+## 2) Domen yoxdursa
+Cloudflare `github.io` domenini idarə edə bilmədiyi üçün frontend guard istifadə olunur. Layihənin ortaq giriş faylından və ya bütün səhifələrin ortaq layoutundan Q-Control guard çağırılmalıdır.
 
 ```html
 <script>
 window.Q_CONTROL = {
-  projectKey: "BURAYA_PUBLIC_KEY",
-  domain: "meyveci.az"
+  projectKey: "Q_CONTROL_PUBLIC_KEY",
+  domain: ""
 };
 </script>
-<script type="module" src="/assets/js/q-control-guard.js"></script>
+<script src="https://qerib-seferli.github.io/qerib-control/client/q-control-guard.js"></script>
 ```
 
-GitHub Pages project path istifadə olunursa `/assets/...` əvəzinə uyğun nisbi path yaz.
-
-## 4. Test
-Q-Control panelində:
-- Dayandır → səhifəni Incognito-da aç → maintenance ekranı görünməlidir.
-- Aktiv et → səhifəni yenilə → sayt normal açılmalıdır.
-
-Guard 60 saniyə session cache istifadə edir. Təcili testdə Incognito aç və ya sessionStorage təmizlə.
-
-## Vacib
-Bu üsul frontend enforcement-dir. Müştəri source kodunu tam idarə edirsə, texniki biliyi olan biri guard-u silə bilər. Daha sərt enforce üçün Cloudflare Worker mərhələsi əlavə etmək lazımdır.
+Ortaq giriş nöqtəsi olmayan və öz domeni olmayan layihədə xaricdən bir faylla bütün səhifələri məcburi qorumaq mümkün deyil; manual GitHub Pages unpublish ehtiyat variantıdır.
