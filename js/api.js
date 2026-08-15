@@ -39,33 +39,23 @@ export async function listProjects() {
 }
 
 export async function saveProject(payload) {
-  const fn = payload.id ? "update_control_project" : "create_control_project";
-  const args = payload.id
-    ? {
-        p_id: payload.id,
-        p_name: payload.name,
-        p_slug: payload.slug,
-        p_domain: payload.domain || null,
-        p_monthly_price: payload.monthly_price,
-        p_status: payload.status,
-        p_paid_until: payload.paid_until,
-        p_auto_suspend: payload.auto_suspend,
-        p_maintenance_title: payload.maintenance_title,
-        p_maintenance_message: payload.maintenance_message,
-        p_notes: payload.notes || null
-      }
-    : {
-        p_name: payload.name,
-        p_slug: payload.slug,
-        p_domain: payload.domain || null,
-        p_monthly_price: payload.monthly_price,
-        p_status: payload.status,
-        p_paid_until: payload.paid_until,
-        p_auto_suspend: payload.auto_suspend,
-        p_maintenance_title: payload.maintenance_title,
-        p_maintenance_message: payload.maintenance_message,
-        p_notes: payload.notes || null
-      };
+  const fn = payload.id ? "update_control_project_v3" : "create_control_project_v3";
+  const common = {
+    p_name: payload.name,
+    p_slug: payload.slug,
+    p_domain: payload.domain || null,
+    p_monthly_price: payload.monthly_price,
+    p_status: payload.status,
+    p_paid_until: payload.paid_until,
+    p_auto_suspend: payload.auto_suspend,
+    p_maintenance_title: payload.maintenance_title,
+    p_maintenance_message: payload.maintenance_message,
+    p_notes: payload.notes || null,
+    p_control_mode: payload.control_mode,
+    p_currency: payload.currency,
+    p_sale_price: payload.sale_price
+  };
+  const args = payload.id ? { p_id: payload.id, ...common } : common;
   const { data, error } = await supabase.rpc(fn, args);
   if (error) throw error;
   return data;
@@ -81,13 +71,14 @@ export async function setProjectStatus(projectId, status, note = null) {
   return data;
 }
 
-export async function recordPaymentAndExtend({ projectId, months, amount, paidAt, note }) {
-  const { data, error } = await supabase.rpc("record_control_payment", {
+export async function recordPaymentAndExtend({ projectId, months, amount, paidAt, note, paymentKind }) {
+  const { data, error } = await supabase.rpc("record_control_payment_v3", {
     p_project_id: projectId,
-    p_months: Number(months),
+    p_months: Number(months || 1),
     p_amount: Number(amount),
     p_paid_at: paidAt,
-    p_note: note || null
+    p_note: note || null,
+    p_payment_kind: paymentKind || "service"
   });
   if (error) throw error;
   return data;
@@ -112,7 +103,7 @@ export async function listPayments() {
 
   while (true) {
     const { data, error } = await supabase.from("control_payments")
-      .select("*, control_projects(id,name,domain,icon_url)")
+      .select("*, control_projects(id,name,domain,icon_url,currency)")
       .order("paid_at", { ascending: false })
       .range(from, from + pageSize - 1);
 
@@ -132,7 +123,7 @@ export async function listPayments() {
 
 export async function listLogs(limit = 300) {
   const { data, error } = await supabase.from("control_activity_logs")
-    .select("*, control_projects(id,name,domain,icon_url)")
+    .select("*, control_projects(id,name,domain,icon_url,currency)")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;

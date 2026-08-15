@@ -87,6 +87,8 @@ function bindEvents() {
   $("#projectName").addEventListener("input", () => {
     if (!$("#projectId").value) $("#projectSlug").value = slugify($("#projectName").value);
   });
+  $("#projectControlMode").addEventListener("change", updateProjectModeUI);
+  $("#projectCurrency").addEventListener("change", updateProjectModeUI);
   $("#projectIconButton").addEventListener("click", () => $("#projectIconInput").click());
   $("#chooseProjectIconBtn").addEventListener("click", () => $("#projectIconInput").click());
   $("#projectIconInput").addEventListener("change", handleIconPick);
@@ -96,6 +98,7 @@ function bindEvents() {
   $("#projectForm").addEventListener("submit", handleProjectSave);
   $("#extendForm").addEventListener("submit", handleExtendSave);
   $$(".month-btn").forEach(btn => btn.addEventListener("click", () => selectMonths(Number(btn.dataset.months))));
+  $("#extendPaymentKind").addEventListener("change", updateExtendMode);
   $("#profileForm").addEventListener("submit", handleProfileSave);
   $("#refreshSessionBtn").addEventListener("click", refreshSession);
   $("#copyIntegrationBtn").addEventListener("click", copyCurrentIntegration);
@@ -207,26 +210,45 @@ function renderStats() {
   const active = state.projects.filter(p => effectiveStatus(p) === "active");
   const suspended = state.projects.filter(p => effectiveStatus(p) === "suspended");
   const dueSoon = state.projects.filter(p => {
-    if (effectiveStatus(p) !== "active") return false;
+    if (p.control_mode === "one_time") return false;
     const d = daysUntil(p.paid_until);
     return d !== null && d >= 0 && d <= CONFIG.DUE_SOON_DAYS;
   });
 
-  const mrr = active.reduce((sum, p) => sum + Number(p.monthly_price || 0), 0);
-  const totalIncome = state.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  const monthIncome = state.payments
-    .filter(p => isCurrentBakuMonth(p.paid_at))
-    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const recurring = state.projects.filter(p => p.control_mode !== "one_time" && p.status !== "cancelled");
+  const mrr = totalsByCurrency(recurring, p => Number(p.monthly_price || 0), p => p.currency || "AZN");
+  const monthIncome = totalsByCurrency(
+    state.payments.filter(p => isCurrentBakuMonth(p.paid_at)),
+    p => Number(p.amount || 0),
+    p => p.currency || p.control_projects?.currency || "AZN"
+  );
+  const totalIncome = totalsByCurrency(
+    state.payments,
+    p => Number(p.amount || 0),
+    p => p.currency || p.control_projects?.currency || "AZN"
+  );
+  const salesReceived = totalsByCurrency(
+    state.payments.filter(p => p.payment_kind === "sale"),
+    p => Number(p.amount || 0),
+    p => p.currency || p.control_projects?.currency || "AZN"
+  );
+  const salesOutstanding = totalsByCurrency(
+    state.projects.filter(p => Number(p.sale_price || 0) > 0),
+    p => Math.max(0, Number(p.sale_price || 0) - projectSaleReceived(p.id)),
+    p => p.currency || "AZN"
+  );
 
   $("#statActive").textContent = active.length;
   $("#statSuspended").textContent = suspended.length;
   $("#statDueSoon").textContent = dueSoon.length;
-  $("#statMRR").textContent = money(mrr);
-  $("#statMonthIncome").textContent = money(monthIncome);
-  $("#statTotalIncome").textContent = money(totalIncome);
+  $("#statMRR").textContent = formatCurrencyTotals(mrr);
+  $("#statMonthIncome").textContent = formatCurrencyTotals(monthIncome);
+  $("#statTotalIncome").textContent = formatCurrencyTotals(totalIncome);
+  $("#statSalesReceived").textContent = formatCurrencyTotals(salesReceived);
+  $("#statSalesOutstanding").textContent = formatCurrencyTotals(salesOutstanding);
 
-  $("#paymentsMonthIncome").textContent = money(monthIncome);
-  $("#paymentsTotalIncome").textContent = money(totalIncome);
+  $("#paymentsMonthIncome").textContent = formatCurrencyTotals(monthIncome);
+  $("#paymentsTotalIncome").textContent = formatCurrencyTotals(totalIncome);
   $("#paymentsCount").textContent = new Intl.NumberFormat("az-AZ").format(state.payments.length);
 }
 
@@ -241,7 +263,8 @@ function renderProjectCards() {
       filter === "all" ||
       (filter === "active" && status === "active") ||
       (filter === "suspended" && status === "suspended") ||
-      (filter === "due" && status === "active" && d !== null && d >= 0 && d <= CONFIG.DUE_SOON_DAYS);
+      (filter === "due" && p.control_mode !== "one_time" && d !== null && d >= 0 && d <= CONFIG.DUE_SOON_DAYS) ||
+      (filter === "overdue" && p.control_mode === "monitor_recurring" && d !== null && d < 0);
     return matchesQ && matchesFilter;
   });
 
@@ -252,32 +275,58 @@ function renderProjectCards() {
 function projectCardHtml(p) {
   const status = effectiveStatus(p);
   const d = daysUntil(p.paid_until);
-  const dueClass = status === "active" && d !== null && d >= 0 && d <= CONFIG.DUE_SOON_DAYS;
-  const badgeClass = dueClass ? "due" : status;
-  const badgeText = dueClass ? `${d === 0 ? "BU GÜN" : `${d} GÜN QALIB`}` : statusLabel(status);
+  const isRecurring = p.control_mode !== "one_time";
+  const overdue = isRecurring && p.paid_until && d !== null && d < 0;
+  const dueClass = isRecurring && !overdue && d !== null && d >= 0 && d <= CONFIG.DUE_SOON_DAYS;
+  const badgeClass = overdue && p.control_mode === "monitor_recurring"
+    ? "overdue"
+    : dueClass ? "due" : status;
+  const badgeText = overdue && p.control_mode === "monitor_recurring"
+    ? "ÖDƏNİŞ GECİKİB"
+    : dueClass
+      ? `${d === 0 ? "BU GÜN" : `${d} GÜN QALIB`}`
+      : statusLabel(status);
+
   const initials = esc((p.name || "Q").trim().charAt(0).toUpperCase());
   const icon = projectIconHtml(p, initials);
+  const domain = projectDomainHtml(p);
+  const received = projectSaleReceived(p.id);
+  const saleLeft = Math.max(0, Number(p.sale_price || 0) - received);
+
+  const amountBox = p.control_mode === "one_time"
+    ? `<div class="mini-kv"><span>Satış qiyməti</span><b>${money(p.sale_price, p.currency)}</b></div>`
+    : `<div class="mini-kv"><span>Aylıq</span><b>${money(p.monthly_price, p.currency)}</b></div>`;
+
+  const secondBox = p.control_mode === "one_time"
+    ? `<div class="mini-kv"><span>Alınıb / qalıq</span><b>${money(received,p.currency)} / ${money(saleLeft,p.currency)}</b></div>`
+    : `<div class="mini-kv"><span>Bitmə tarixi</span><b>${formatDate(p.paid_until, true)}</b></div>`;
+
+  const modeBox = `<div class="mini-kv"><span>İdarəetmə</span><b>${controlModeLabel(p.control_mode)}</b></div>`;
+  const actionButtons = p.control_mode === "enforced_recurring"
+    ? `<button class="btn btn-success" data-action="pay" data-id="${p.id}">₼ Ödəniş</button>
+       <button class="btn ${status === "active" ? "btn-danger" : "btn-soft"}" data-action="${status === "active" ? "suspend" : "activate"}" data-id="${p.id}">
+         ${status === "active" ? "Dayandır" : "Aktiv et"}
+       </button>`
+    : `<button class="btn btn-success" data-action="pay" data-id="${p.id}">${p.control_mode === "one_time" ? "₼ Ödəniş əlavə et" : "₼ Ödəniş"}</button>`;
+
   return `
     <article class="project-card ${status}">
       <div class="project-top">
         <div class="project-icon">${icon}</div>
         <div class="project-meta">
           <h4>${esc(p.name)}</h4>
-          <p>${esc(p.domain || p.slug)}</p>
+          <p>${domain}</p>
         </div>
-        <span class="badge ${badgeClass}">● ${esc(badgeText)}</span>
+        <span class="badge ${badgeClass}">${badgeClass === "due" || badgeClass === "overdue" ? "" : "● "}${esc(badgeText)}</span>
       </div>
       <div class="project-info">
-        <div class="mini-kv"><span>Aylıq</span><b>${money(p.monthly_price)}</b></div>
-        <div class="mini-kv"><span>Bitmə tarixi</span><b>${formatDate(p.paid_until, true)}</b></div>
-        <div class="mini-kv"><span>Avtomatik</span><b>${p.auto_suspend ? "Aktiv" : "Söndürülüb"}</b></div>
+        ${amountBox}
+        ${secondBox}
+        ${modeBox}
         <div class="mini-kv"><span>Son dəyişiklik</span><b>${formatDate(p.updated_at, true)}</b></div>
       </div>
       <div class="project-actions">
-        <button class="btn btn-success" data-action="pay" data-id="${p.id}">₼ Ödəniş</button>
-        <button class="btn ${status === "active" ? "btn-danger" : "btn-soft"}" data-action="${status === "active" ? "suspend" : "activate"}" data-id="${p.id}">
-          ${status === "active" ? "Dayandır" : "Aktiv et"}
-        </button>
+        ${actionButtons}
         <button class="btn btn-ghost" data-action="detail" data-id="${p.id}">Ətraflı</button>
       </div>
     </article>`;
@@ -288,12 +337,16 @@ function renderProjectsTable() {
   const list = state.projects.filter(p => !q || `${p.name} ${p.domain || ""} ${p.slug}`.toLowerCase().includes(q));
   $("#projectsTableBody").innerHTML = list.length ? list.map(p => {
     const status = effectiveStatus(p);
+    const amount = p.control_mode === "one_time"
+      ? money(p.sale_price, p.currency)
+      : money(p.monthly_price, p.currency);
+    const due = p.control_mode === "one_time" ? "—" : formatDate(p.paid_until, true);
     return `<tr>
-      <td><div class="table-project"><div class="table-project-icon">${projectIconHtml(p, esc((p.name || "Q").trim().charAt(0).toUpperCase()))}</div><div class="cell-main"><strong>${esc(p.name)}</strong><span>${esc(p.domain || p.slug)}</span></div></div></td>
+      <td><div class="table-project"><div class="table-project-icon">${projectIconHtml(p, esc((p.name || "Q").trim().charAt(0).toUpperCase()))}</div><div class="cell-main"><strong>${esc(p.name)}</strong><span>${projectDomainHtml(p)}</span></div></div></td>
       <td><span class="badge ${status}">● ${statusLabel(status)}</span></td>
-      <td>${money(p.monthly_price)}</td>
-      <td>${formatDate(p.paid_until, true)}</td>
-      <td>${p.auto_suspend ? "Bəli" : "Xeyr"}</td>
+      <td>${amount}</td>
+      <td>${due}</td>
+      <td>${controlModeLabel(p.control_mode)}</td>
       <td><div class="table-actions">
         <button class="btn btn-soft" data-action="detail" data-id="${p.id}">Bax</button>
         <button class="btn btn-ghost" data-action="edit" data-id="${p.id}">Redaktə</button>
@@ -306,6 +359,9 @@ function renderPayments() {
   $("#paymentsTableBody").innerHTML = state.payments.length ? state.payments.map(p => {
     const project = p.control_projects || {};
     const fallback = esc((project.name || "Q").trim().charAt(0).toUpperCase());
+    const kind = p.payment_kind === "sale" ? "Layihə satışı" : "Xidmət";
+    const duration = p.payment_kind === "sale" ? "—" : `${p.months} ay`;
+    const period = p.payment_kind === "sale" ? "—" : `${formatDate(p.period_from)} → ${formatDate(p.period_to)}`;
     return `
     <tr>
       <td>${formatDate(p.paid_at, true)}</td>
@@ -314,16 +370,17 @@ function renderPayments() {
           <div class="table-project-icon">${projectIconHtml(project, fallback)}</div>
           <div class="cell-main">
             <strong>${esc(project.name || "—")}</strong>
-            <span>${esc(project.domain || "")}</span>
+            <span>${projectDomainHtml(project)}</span>
           </div>
         </div>
       </td>
-      <td><strong>${money(p.amount)}</strong></td>
-      <td>${p.months} ay</td>
-      <td>${formatDate(p.period_from)} → ${formatDate(p.period_to)}</td>
+      <td><strong>${money(p.amount, p.currency || project.currency || "AZN")}</strong></td>
+      <td>${kind}</td>
+      <td>${duration}</td>
+      <td>${period}</td>
       <td>${esc(p.note || "—")}</td>
     </tr>`;
-  }).join("") : `<tr><td colspan="6">Hələ ödəniş qeydi yoxdur.</td></tr>`;
+  }).join("") : `<tr><td colspan="7">Hələ ödəniş qeydi yoxdur.</td></tr>`;
 }
 
 function renderLogs() {
@@ -391,13 +448,17 @@ function openProjectDialog(project = null) {
   $("#projectName").value = project?.name || "";
   $("#projectSlug").value = project?.slug || "";
   $("#projectDomain").value = project?.domain || "";
+  $("#projectControlMode").value = project?.control_mode || "enforced_recurring";
+  $("#projectCurrency").value = project?.currency || "AZN";
   $("#projectPrice").value = Number(project?.monthly_price || 0);
+  $("#projectSalePrice").value = Number(project?.sale_price || 0);
   $("#projectPaidUntil").value = toDatetimeLocal(project?.paid_until);
   $("#projectStatus").value = project?.status || "active";
   $("#projectAutoSuspend").checked = project?.auto_suspend ?? true;
   $("#projectMaintenanceTitle").value = project?.maintenance_title || "Xidmət müvəqqəti dayandırılıb";
   $("#projectMaintenanceMessage").value = project?.maintenance_message || "Sistem infrastrukturu üzrə xidmət hazırda əlçatan deyil. Xidmət bərpa edildikdən sonra platforma avtomatik olaraq yenidən aktiv olacaq.";
   $("#projectNotes").value = project?.notes || "";
+  updateProjectModeUI();
   $("#projectDialog").showModal();
 }
 
@@ -411,9 +472,12 @@ async function handleProjectSave(event) {
     slug: slugify($("#projectSlug").value),
     domain: safeDomain($("#projectDomain").value),
     monthly_price: Number($("#projectPrice").value || 0),
+    sale_price: Number($("#projectSalePrice").value || 0),
+    currency: $("#projectCurrency").value,
+    control_mode: $("#projectControlMode").value,
     paid_until: localToIso($("#projectPaidUntil").value),
     status: $("#projectStatus").value,
-    auto_suspend: $("#projectAutoSuspend").checked,
+    auto_suspend: $("#projectControlMode").value === "enforced_recurring" && $("#projectAutoSuspend").checked,
     maintenance_title: $("#projectMaintenanceTitle").value.trim(),
     maintenance_message: $("#projectMaintenanceMessage").value.trim(),
     notes: $("#projectNotes").value.trim()
@@ -445,21 +509,46 @@ async function handleProjectSave(event) {
 function openExtend(project) {
   $("#extendProjectId").value = project.id;
   $("#extendProjectName").textContent = project.name;
-  $("#extendAmount").value = Number(project.monthly_price || 0);
   $("#extendPaidAt").value = nowLocalInput();
   $("#extendNote").value = "";
-  selectMonths(1);
+
+  const saleOnly = project.control_mode === "one_time";
+  $("#extendPaymentKind").value = saleOnly ? "sale" : "service";
+  $("#extendPaymentKind").disabled = saleOnly;
+  $("#extendDialogTitle").textContent = saleOnly ? "Layihə ödənişi" : "Ödəniş alındı";
+  updateExtendMode();
   $("#extendDialog").showModal();
+}
+
+function updateExtendMode() {
+  const project = getProject($("#extendProjectId").value);
+  if (!project) return;
+
+  const kind = $("#extendPaymentKind").value;
+  const saleMode = kind === "sale";
+
+  $("#extendMonthPicks").classList.toggle("hidden", saleMode);
+  $("#extendSubmitBtn").textContent = saleMode ? "Ödənişi qeyd et" : "Ödənişi qeyd et və aktivləşdir";
+  $("#extendAmountLabel").textContent = `Məbləğ (${currencySymbol(project.currency)})`;
+
+  if (saleMode) {
+    const left = Math.max(0, Number(project.sale_price || 0) - projectSaleReceived(project.id));
+    $("#extendMonths").value = 1;
+    $("#extendAmount").value = left.toFixed(2);
+    $("#extendPreview").innerHTML = `Satış qiyməti: <b>${money(project.sale_price,project.currency)}</b><br>Satış üzrə alınıb: <b>${money(projectSaleReceived(project.id),project.currency)}</b><br>Qalıq: <b>${money(left,project.currency)}</b>`;
+  } else {
+    selectMonths(Number($("#extendMonths").value || 1));
+  }
 }
 
 function selectMonths(months) {
   $("#extendMonths").value = months;
   $$(".month-btn").forEach(b => b.classList.toggle("active", Number(b.dataset.months) === months));
   const project = getProject($("#extendProjectId").value);
-  if (project) {
+  if (project && $("#extendPaymentKind").value === "service") {
     $("#extendAmount").value = (Number(project.monthly_price || 0) * months).toFixed(2);
     const next = addMonthsKeepingAnchor(project.paid_until || new Date().toISOString(), months);
-    $("#extendPreview").innerHTML = `Cari bitmə: <b>${formatDate(project.paid_until, true)}</b><br>Yeni bitmə: <b>${formatDate(next?.toISOString(), true)}</b><br>Ödəniş qeydə alındıqdan sonra status <b>AKTİV</b> ediləcək.`;
+    $("#extendPreview").innerHTML = `Cari bitmə: <b>${formatDate(project.paid_until, true)}</b><br>Yeni bitmə: <b>${formatDate(next?.toISOString(), true)}</b><br>Ödəniş qeydə alındıqdan sonra xidmət tarixi uzadılacaq.`;
   }
 }
 
@@ -473,11 +562,13 @@ async function handleExtendSave(event) {
       months: Number($("#extendMonths").value),
       amount: Number($("#extendAmount").value),
       paidAt: localToIso($("#extendPaidAt").value),
-      note: $("#extendNote").value.trim()
+      note: $("#extendNote").value.trim(),
+      paymentKind: $("#extendPaymentKind").value
     });
     $("#extendDialog").close();
     await loadAll();
-    toast("Ödəniş qeyd edildi və layihə aktivləşdirildi.");
+    const kind = $("#extendPaymentKind").value;
+    toast(kind === "sale" ? "Layihə satış ödənişi qeydə alındı." : "Xidmət ödənişi qeyd edildi və tarix uzadıldı.");
   } catch (err) {
     toast(errorMessage(err), "error", 5000);
   } finally {
@@ -509,21 +600,34 @@ function openDetail(project) {
   state.detailProjectId = project.id;
   const status = effectiveStatus(project);
   $("#detailName").textContent = project.name;
-  $("#detailDomain").textContent = project.domain || project.slug;
+  $("#detailDomain").innerHTML = projectDomainHtml(project);
   $("#detailProjectIcon").innerHTML = projectIconHtml(project, esc((project.name || "Q").trim().charAt(0).toUpperCase()));
   const integration = integrationSnippet(project);
   const mode = project.domain ? "Cloudflare Worker" : "Frontend guard";
+  const received = projectSaleReceived(project.id);
+  const left = Math.max(0, Number(project.sale_price || 0) - received);
   $("#copyIntegrationBtn").textContent = project.domain ? "Route məlumatını kopyala" : "İnteqrasiya kodunu kopyala";
+
+  const recurringDetails = project.control_mode === "one_time" ? "" : `
+      <div class="detail-box"><span>Aylıq</span><b>${money(project.monthly_price,project.currency)}</b></div>
+      <div class="detail-box"><span>Bitmə tarixi</span><b>${formatDate(project.paid_until, true)}</b></div>`;
+
+  const saleDetails = Number(project.sale_price || 0) > 0 ? `
+      <div class="detail-box"><span>Satış qiyməti</span><b>${money(project.sale_price,project.currency)}</b></div>
+      <div class="detail-box"><span>Satış üzrə alınıb</span><b>${money(received,project.currency)}</b></div>
+      <div class="detail-box"><span>Satış qalığı</span><b>${money(left,project.currency)}</b></div>` : "";
+
   $("#detailContent").innerHTML = `
     <div class="detail-grid">
       <div class="detail-box"><span>Status</span><b>${statusLabel(status)}</b></div>
-      <div class="detail-box"><span>Aylıq</span><b>${money(project.monthly_price)}</b></div>
-      <div class="detail-box"><span>Bitmə tarixi</span><b>${formatDate(project.paid_until, true)}</b></div>
-      <div class="detail-box"><span>Avto dayandırma</span><b>${project.auto_suspend ? "Aktiv" : "Söndürülüb"}</b></div>
-      <div class="detail-box"><span>Qoruma üsulu</span><b>${mode}</b></div>
+      <div class="detail-box"><span>İdarəetmə tipi</span><b>${controlModeLabel(project.control_mode)}</b></div>
+      ${recurringDetails}
+      ${saleDetails}
+      <div class="detail-box"><span>Qoruma üsulu</span><b>${project.control_mode === "enforced_recurring" ? mode : "Bloklama yoxdur"}</b></div>
+      <div class="detail-box"><span>Valyuta</span><b>${project.currency || "AZN"}</b></div>
       <div class="detail-box"><span>Slug</span><b>${esc(project.slug)}</b></div>
     </div>
-    <pre class="code-box">${esc(integration)}</pre>
+    ${project.control_mode === "enforced_recurring" ? `<pre class="code-box">${esc(integration)}</pre>` : ""}
     <div class="modal-actions" style="border-top:0;padding-top:0">
       <button class="btn btn-soft" data-action="regen-key" data-id="${project.id}">Public key yenilə</button>
       <button class="btn btn-danger" data-action="archive" data-id="${project.id}">Arxivlə</button>
@@ -631,6 +735,64 @@ async function handleDelegatedClick(event) {
       toast("Public key yeniləndi.");
     } catch (err) { toast(errorMessage(err), "error"); }
   }
+}
+
+function controlModeLabel(mode) {
+  return ({
+    enforced_recurring: "Aylıq + bağlama",
+    monitor_recurring: "Aylıq izləmə",
+    one_time: "Birdəfəlik satış"
+  })[mode] || "Aylıq + bağlama";
+}
+
+function currencySymbol(currency = "AZN") {
+  return ({ AZN:"₼", USD:"$", EUR:"€" })[currency] || currency;
+}
+
+function totalsByCurrency(items, amountFn, currencyFn) {
+  const totals = {};
+  for (const item of items) {
+    const currency = currencyFn(item) || "AZN";
+    totals[currency] = (totals[currency] || 0) + Number(amountFn(item) || 0);
+  }
+  return totals;
+}
+
+function formatCurrencyTotals(totals) {
+  const entries = Object.entries(totals).filter(([,value]) => Math.abs(value) > 0.00001);
+  if (!entries.length) return money(0, "AZN");
+  return entries.map(([currency,value]) => money(value,currency)).join(" · ");
+}
+
+function projectSaleReceived(projectId) {
+  return state.payments
+    .filter(p => p.project_id === projectId && p.payment_kind === "sale")
+    .reduce((sum,p) => sum + Number(p.amount || 0), 0);
+}
+
+function projectDomainHtml(project) {
+  const domain = project?.domain || "";
+  if (!domain) return esc(project?.slug || "—");
+  const safe = esc(domain);
+  return `<a class="project-domain-link" href="https://${safe}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
+}
+
+function updateProjectModeUI() {
+  const mode = $("#projectControlMode").value;
+  const currency = $("#projectCurrency").value;
+  const recurring = mode !== "one_time";
+  const enforced = mode === "enforced_recurring";
+
+  $("#monthlyPriceField").classList.toggle("hidden", !recurring);
+  $("#paidUntilField").classList.toggle("hidden", !recurring);
+  $("#autoSuspendField").classList.toggle("hidden", !enforced);
+  $("#salePriceField").classList.toggle("hidden", false);
+
+  $("#monthlyPriceField span").textContent = `Aylıq xidmət məbləği (${currencySymbol(currency)})`;
+  $("#salePriceField span").textContent = `Layihənin satış qiyməti (${currencySymbol(currency)})`;
+
+  if (!enforced) $("#projectAutoSuspend").checked = false;
+  if (enforced && !$("#projectId").value) $("#projectAutoSuspend").checked = true;
 }
 
 function projectIconHtml(project, fallback = "Q") {

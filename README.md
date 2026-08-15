@@ -475,3 +475,101 @@ Q-Control-dan `Dayandır` veriləndə xüsusi maintenance səhifəsi göstərili
 `Aktiv et` və ya `Ödənişi qeyd et və aktivləşdir` verildikdə normal Meyvəçi saytı açılır.
 
 Bu, yeni layihələri qoşarkən işlək referans nümunədir.
+
+
+# Q-Control V3 — layihə və ödəniş tipləri
+
+Q-Control artıq yalnız sayt bağlama sistemi deyil, bütün layihələrimin portfolio + gəlir nəzarət panelidir.
+
+## İdarəetmə tipləri
+
+### 1. Aylıq xidmət + sayt dayandırıla bilər
+`enforced_recurring`
+
+Meyvəçi kimi layihələr üçündür.
+
+- aylıq məbləğ var;
+- ödəniş bitmə tarixi var;
+- auto suspend işləyir;
+- Cloudflare Worker saytın girişini dayandıra bilir;
+- ödəniş qeyd ediləndə tarix uzanır və sayt aktivləşir.
+
+### 2. Aylıq xidmət + yalnız ödəniş izləmə
+`monitor_recurring`
+
+Məsələn email sistemi üçün hər ay $20 aldığım, amma saytı bağlamaq istəmədiyim layihə.
+
+- aylıq məbləğ və tarix izlənir;
+- 7 gün qalmış sarı xəbərdarlıq görünür;
+- vaxt keçərsə `ÖDƏNİŞ GECİKİB` görünür;
+- sayt Q-Control tərəfindən heç vaxt bloklanmır;
+- Cloudflare route olsa belə Worker həmişə saytı buraxır.
+
+### 3. Birdəfəlik layihə / satış
+`one_time`
+
+Birdəfəlik qiymətə satdığım layihələr üçündür.
+
+- `Layihənin satış qiyməti` yazılır;
+- neçə hissə ödəniş alsam hər birini `Layihə satışı` kimi əlavə edirəm;
+- Q-Control `Alınıb` və `Qalıq` məbləğini hesablayır;
+- sayt dayandırılmır;
+- aylıq tarix tələb olunmur.
+
+## Eyni layihədə satış + aylıq xidmət
+
+Layihə aylıq xidmətlidirsə belə `Layihənin satış qiyməti` yaza bilərəm.
+
+Ödəniş pəncərəsində:
+- `Aylıq xidmət`
+- `Layihə satışı / ilkin ödəniş`
+
+seçimi var.
+
+Beləliklə məsələn:
+- saytın hazırlanması: 1500 AZN;
+- alınan ilkin ödənişlər: 500 + 500 + 500;
+- aylıq server/xidmət: 94.12 AZN
+
+eyni layihə daxilində ayrıca izlənir.
+
+## Valyuta
+
+Hər layihə üçün:
+- AZN
+- USD
+- EUR
+
+seçilir.
+
+Q-Control fərqli valyutaları bir-birinə səhvən toplamır. Dashboard-da nəticə məsələn belə görünə bilər:
+
+`144,12 ₼ · $20`
+
+## Domen linki
+
+Layihə kartında və layihələr cədvəlində domenin üzərinə toxunanda sayt yeni tabda açılır.
+
+## Yeni layihə üçün qısa seçim
+
+Saytı bağlamaq istəyirəm:
+`Aylıq xidmət + sayt dayandırıla bilər`
+
+Ödənişi izləyirəm, amma saytı bağlamıram:
+`Aylıq xidmət + yalnız ödəniş izləmə`
+
+Birdəfəlik satmışam:
+`Birdəfəlik layihə / satış`
+
+## Quraşdırma
+
+V3 fayllarını GitHub-a deploy etdikdən sonra Supabase SQL Editor-də bir dəfə:
+
+`sql/05_upgrade_v3_billing_portfolio.sql`
+
+run et.
+
+Mövcud Meyvəçi layihəsi avtomatik əvvəlki rejimdə qalır:
+`enforced_recurring + AZN`.
+
+Cloudflare Worker kodunu dəyişmək lazım deyil; V3 SQL-də mövcud `check_control_service_by_domain()` RPC-si yeni rejimlərə uyğun yenilənir.

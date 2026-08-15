@@ -1055,3 +1055,124 @@ body{
     animation:none!important;
   }
 }
+
+
+/* ============================================================
+   Q-Control V3 — portfolio / billing UX
+   ============================================================ */
+.project-domain-link{
+  color:inherit;
+  text-decoration:none;
+  border-bottom:1px dashed rgba(154,132,255,.25);
+  transition:.18s ease;
+}
+.project-domain-link:hover{
+  color:#cfc6ff;
+  border-bottom-color:rgba(154,132,255,.65);
+}
+.detail-project-title .project-domain-link{
+  color:var(--muted);
+}
+
+/* Sarı "N gün qalıb" indikatoru da canlı pulse etsin */
+.badge.due,
+.badge.overdue{
+  display:inline-flex;
+  align-items:center;
+  gap:0;
+  min-height:28px;
+  padding:6px 10px;
+  font-size:0;
+  border:1px solid rgba(251,191,36,.18);
+  background:linear-gradient(180deg,rgba(251,191,36,.14),rgba(251,191,36,.075));
+  color:#fbd36d;
+}
+.badge.due:before,
+.badge.overdue:before{
+  content:"";
+  width:7px;
+  height:7px;
+  flex:0 0 7px;
+  border-radius:50%;
+  margin-right:7px;
+  background:#fbbf24;
+  box-shadow:0 0 11px rgba(251,191,36,.72);
+  animation:qcLivePulse 1.45s ease-in-out infinite;
+}
+.badge.due:after,
+.badge.overdue:after{
+  font-size:10px;
+  font-weight:850;
+  letter-spacing:.015em;
+}
+.badge.due:after{content:attr(data-label)}
+.badge.overdue{
+  color:#ffd477;
+  border-color:rgba(251,191,36,.22);
+}
+
+/* JS mövcud mətni badge daxilində saxlayır; font-size 0 olduğundan
+   dinamik due mətnini ayrıca data-label olmadan göstərmək üçün child text mümkün deyil.
+   Ona görə due badge üçün aşağıdakı qayda ilə fontu geri açırıq və nöqtəni ::before saxlayırıq. */
+.badge.due,
+.badge.overdue{
+  font-size:10px!important;
+  font-weight:850;
+}
+.badge.due:after,
+.badge.overdue:after{content:none!important}
+
+/* Maliyyə dəyərləri bir neçə valyutada uzun ola bilər */
+.stat-card strong{
+  overflow-wrap:anywhere;
+}
+
+/* Telefon: layihə formu və ətraflı məlumat blokları 2 sütun */
+@media(max-width:760px){
+  #projectDialog .form-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  #projectDialog .form-grid > .span-2,
+  #projectDialog .project-icon-field,
+  #projectDialog textarea,
+  #projectDialog label:has(textarea){
+    grid-column:1/-1!important;
+  }
+  #projectDialog .field input,
+  #projectDialog .field select{
+    min-width:0;
+  }
+
+  #detailDialog .detail-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:9px!important;
+    padding:16px!important;
+  }
+  #detailDialog .detail-box{
+    min-width:0;
+    padding:11px!important;
+  }
+  #detailDialog .detail-box b{
+    overflow-wrap:anywhere;
+  }
+  #detailDialog .code-box{
+    grid-column:1/-1;
+  }
+
+  #extendDialog .form-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+  }
+  #extendDialog .form-grid .span-2{
+    grid-column:1/-1!important;
+  }
+}
+
+@media(max-width:380px){
+  #projectDialog .form-grid,
+  #detailDialog .detail-grid,
+  #extendDialog .form-grid{
+    gap:8px!important;
+  }
+}

@@ -132,6 +132,16 @@
               <strong id="statTotalIncome">0 ₼</strong>
               <small>bütün ödəniş tarixçəsi</small>
             </article>
+            <article class="stat-card finance-stat">
+              <span>Layihə satışları</span>
+              <strong id="statSalesReceived">0 ₼</strong>
+              <small>satış üzrə alınan ödənişlər</small>
+            </article>
+            <article class="stat-card finance-stat">
+              <span>Satış qalığı</span>
+              <strong id="statSalesOutstanding">0 ₼</strong>
+              <small>layihə satışlarından qalan</small>
+            </article>
           </div>
 
           <div class="section-head">
@@ -146,6 +156,7 @@
                 <option value="active">Aktiv</option>
                 <option value="suspended">Dayandırılıb</option>
                 <option value="due">Vaxtı yaxın</option>
+                <option value="overdue">Ödəniş gecikib</option>
               </select>
             </div>
           </div>
@@ -205,6 +216,7 @@
                   <th>Tarix</th>
                   <th>Layihə</th>
                   <th>Məbləğ</th>
+                  <th>Növ</th>
                   <th>Müddət</th>
                   <th>Period</th>
                   <th>Qeyd</th>
@@ -296,11 +308,31 @@
           <span>Domen</span>
           <input id="projectDomain" maxlength="200" placeholder="meyveci.az">
         </label>
-        <label class="field">
-          <span>Aylıq məbləğ (₼)</span>
-          <input id="projectPrice" type="number" min="0" step="0.01" value="0">
+        <label class="field span-2">
+          <span>İdarəetmə tipi</span>
+          <select id="projectControlMode">
+            <option value="enforced_recurring">Aylıq xidmət + sayt dayandırıla bilər</option>
+            <option value="monitor_recurring">Aylıq xidmət + yalnız ödəniş izləmə</option>
+            <option value="one_time">Birdəfəlik layihə / satış</option>
+          </select>
         </label>
         <label class="field">
+          <span>Valyuta</span>
+          <select id="projectCurrency">
+            <option value="AZN">AZN (₼)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+          </select>
+        </label>
+        <label class="field" id="monthlyPriceField">
+          <span>Aylıq xidmət məbləği</span>
+          <input id="projectPrice" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label class="field" id="salePriceField">
+          <span>Layihənin satış qiyməti</span>
+          <input id="projectSalePrice" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label class="field" id="paidUntilField">
           <span>Ödəniş bitmə tarixi</span>
           <input id="projectPaidUntil" type="datetime-local">
         </label>
@@ -312,7 +344,7 @@
             <option value="cancelled">Ləğv edilib</option>
           </select>
         </label>
-        <label class="switch-field">
+        <label class="switch-field" id="autoSuspendField">
           <input id="projectAutoSuspend" type="checkbox" checked>
           <span class="switch"></span>
           <span>
@@ -344,13 +376,22 @@
     <form id="extendForm" method="dialog">
       <div class="modal-head">
         <div>
-          <h3>Ödəniş alındı</h3>
+          <h3 id="extendDialogTitle">Ödəniş alındı</h3>
           <p id="extendProjectName">—</p>
         </div>
         <button type="button" class="icon-btn" data-close-dialog="extendDialog">✕</button>
       </div>
       <input id="extendProjectId" type="hidden">
-      <div class="month-picks">
+      <div class="payment-kind-wrap">
+        <label class="field">
+          <span>Ödəniş növü</span>
+          <select id="extendPaymentKind">
+            <option value="service">Aylıq xidmət</option>
+            <option value="sale">Layihə satışı / ilkin ödəniş</option>
+          </select>
+        </label>
+      </div>
+      <div id="extendMonthPicks" class="month-picks">
         <button type="button" data-months="1" class="month-btn active">1 ay</button>
         <button type="button" data-months="3" class="month-btn">3 ay</button>
         <button type="button" data-months="6" class="month-btn">6 ay</button>
@@ -359,7 +400,7 @@
       <input id="extendMonths" type="hidden" value="1">
       <div class="form-grid">
         <label class="field">
-          <span>Məbləğ (₼)</span>
+          <span id="extendAmountLabel">Məbləğ</span>
           <input id="extendAmount" type="number" min="0" step="0.01" required>
         </label>
         <label class="field">
@@ -374,7 +415,7 @@
       <div id="extendPreview" class="preview-box"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" data-close-dialog="extendDialog">Ləğv et</button>
-        <button type="submit" class="btn btn-primary">Ödənişi qeyd et və aktivləşdir</button>
+        <button id="extendSubmitBtn" type="submit" class="btn btn-primary">Ödənişi qeyd et və aktivləşdir</button>
       </div>
     </form>
   </dialog>

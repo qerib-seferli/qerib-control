@@ -12,12 +12,16 @@ export function esc(value = "") {
 
 export const APP_TIME_ZONE = "Asia/Baku";
 
-export function money(value) {
+export function money(value, currency = "AZN") {
   const n = Number(value || 0);
-  return `${new Intl.NumberFormat("az-AZ", {
+  const formatted = new Intl.NumberFormat("az-AZ", {
     minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
     maximumFractionDigits: 2
-  }).format(n)} ₼`;
+  }).format(n);
+  const symbol = ({ AZN:"₼", USD:"$", EUR:"€" })[currency] || currency;
+  return currency === "USD" || currency === "EUR"
+    ? `${symbol}${formatted}`
+    : `${formatted} ${symbol}`;
 }
 
 function bakuParts(value = new Date()) {
@@ -84,6 +88,10 @@ export function isCurrentBakuMonth(value) {
 export function effectiveStatus(project) {
   if (!project) return "suspended";
   if (project.status === "cancelled") return "cancelled";
+
+  // Monitor-only və birdəfəlik layihələr Q-Control tərəfindən bloklanmır.
+  if (project.control_mode !== "enforced_recurring") return "active";
+
   if (project.status === "suspended") return "suspended";
   if (project.auto_suspend && project.paid_until && new Date(project.paid_until).getTime() <= Date.now()) return "suspended";
   return "active";
